@@ -1,0 +1,1759 @@
+---
+title: "Diffusion mapping reveals vineyard-site specific fermentation trajectories"
+always_allow_html: yes
+author: 
+- Taylor Reiter
+- Rachel Montpetit
+- ...
+- Ron Runnebaum
+- Ben Montpetit
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+bibliography: ../bibliography.bib
+graphics: yes
+figsintext: yes
+geometry: "left=1in,right=1in,top=1in,bottom=1in"
+header-includes:
+- \usepackage{verbatim}
+- \newcommand{\comm}[1]{}
+- \usepackage{float} \floatplacement{figure}{H}
+- \newcommand{\beginsupplement}{\setcounter{table}{0}  \renewcommand{\thetable}{S\arabic{table}}
+  \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
+- \usepackage[font={small,it}, labelfont={bf}]{caption}
+keep_tex: yes
+output:
+  bookdown::pdf_document2:
+    fig_caption: yes
+    toc: false
+---
+  
+```{r setup, include=FALSE, eval = T}
+knitr::opts_chunk$set(echo = F, eval = T, message = F, warning = F, cache = T, 
+                      include = T, fig.keep = 'high', fig.path = "Rmd_fig_out/",
+                      dpi=400)
+```
+
+```{r libs, eval = T}
+library(dplyr)
+library(purrr)
+library(tidyr)
+library(tibble)
+library(readr)
+library(purrr)
+library(destiny)
+library(limma)
+library(edgeR)
+library(ggplot2)
+library(ggthemes)
+library(ggpubr)
+library(clusterProfiler)
+library(ggrepel)
+library(org.Sc.sgd.db)
+library(kableExtra)
+library(gridExtra)
+library(UpSetR)
+library(cowplot)
+library(ggplotify)
+library(knitr)
+library(ggcorrplot)
+library(RColorBrewer)
+set.seed(1)
+```
+
+```{r FUNCTIONS}
+orf_to_common <- function(keys){
+  common <- AnnotationDbi::select(org.Sc.sgd.db,
+                                  keys = keys,
+                                  columns=c("COMMON"),
+                                  keytype="ORF")
+  return(common)
+}
+
+lm_eqn <- function(df, y, x){
+    formula = as.formula(sprintf('%s ~ %s', y, x))
+    m <- lm(formula, data=df);
+    # formating the values into a summary string to print out
+    # ~ give some space, but equal size and comma need to be quoted
+    eq <- substitute(italic(target) == a + b %.% italic(input)*","~~italic(r)^2~"="~r2*","~~p~"="~italic(pvalue), 
+         list(target = y,
+              input = x,
+              a = format(as.vector(coef(m)[1]), digits = 2), 
+              b = format(as.vector(coef(m)[2]), digits = 2), 
+             r2 = format(summary(m)$r.squared, digits = 3),
+             # getting the pvalue is painful
+             pvalue = format(summary(m)$coefficients[2,'Pr(>|t|)'], digits=1)
+            )
+          )
+    as.character(as.expression(eq));                 
+}
+
+dc_contrast <- function(dc_fit, coeff, adj.p.filt = 0.01, filter_logFC = T){
+  # Test diffusion component coefficient
+  dc_con <- contrasts.fit(dc_fit, coefficients = coeff)   
+  dc_b <- eBayes(dc_con)
+  dc_top <- topTable(dc_b, sort.by = "logFC", number = Inf)
+  dc_top <- dc_top[dc_top$adj.P.Val < adj.p.filt, ]
+  
+  # Translate ORF to Common
+  dc_top$ORF <- rownames(dc_top)
+  commons <- orf_to_common(dc_top$ORF)
+  # subset to first occurrence of ORF
+  commons <- commons[match(unique(commons$ORF), commons$ORF), ]
+  commons <- commons[ , -2]
+  commons$COMMON <- ifelse(is.na(commons$COMMON), commons$ORF, commons$COMMON)
+  commons <- unique(commons[ , ])
+  dc_top <- left_join(dc_top, commons, by = c("ORF"))
+  # normalize logfc based on min and max of DC
+  normalizer <- max(dc_fit$design[ , coeff]) - min(dc_fit$design[ , coeff])
+  dc_top <- dc_top %>%
+    mutate(logFC_adj = logFC*normalizer)
+  if(filter_logFC == F) {
+    return(dc_top)
+  } else {
+    # Join Common to diffex results
+    dc_top <- dc_top %>%
+      filter(abs(logFC_adj) > 2)
+    return(dc_top)
+  }
+}
+
+dc_viz <- function(dc_con){
+  # separate to induced and repressed
+  up <- dc_con[dc_con$logFC > 3, ]
+  down <- dc_con[dc_con$logFC < -3, ] 
+  
+  # KEGG enrichment
+  ekegg_up <- enrichKEGG(up$ORF, "sce", pAdjustMethod = "bonferroni") 
+  plt_rows <- ekegg_up@result %>%
+    filter(p.adjust < .05) %>%
+    nrow()
+  plt1 <- dotplot(ekegg_up, showCategory = plt_rows, font.size = 5) + theme_minimal(base_size = 5)
+  
+  ekegg_down <- enrichKEGG(down$ORF, "sce", pAdjustMethod = "bonferroni")
+  plt_rows <- ekegg_down@result %>%
+    filter(p.adjust < .05) %>%
+    nrow()
+  plt2 <- dotplot(ekegg_down, showCategory = plt_rows, font.size = 5) + theme_minimal(base_size = 5)
+  
+  # GO enrichment
+  ego_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                     ont = "ALL", pAdjustMethod = "bonferroni")
+  plt_rows <- ego_up@result %>%
+    filter(p.adjust < .05) %>%
+    nrow()
+  plt3 <- dotplot(ego_up, showCategory = plt_rows, font.size = 5) + theme_minimal(base_size = 5)
+  
+  ego_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                       ont = "ALL", pAdjustMethod = "bonferroni")
+  plt_rows <- ego_down@result %>%
+    filter(p.adjust < .05) %>%
+    nrow()
+  plt4 <- dotplot(ego_down, showCategory = plt_rows, font.size = 5) + theme_minimal(base_size = 5)
+  
+  # combine plots
+  ggarrange(plt1, plt2, plt3, plt4, ncol = 2, nrow = 2, common.legend = T, 
+            legend = "bottom", labels = c("A", "B", "C", "D"),
+            heights = c(1, 2))
+}
+
+# this plot only makes sense when there are > ~10 genes per component that are
+# differentially expressed
+dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "hr")){
+  # dc <- dc19
+  # dc_num <- "DC5"
+  # dc_con <- dc5_19
+  # separate to induced and repressed -- note that filtering for 
+  # log2fc is done in dc_contrast() when normalize_logFC = T. 
+  # default is a normalizes logFC > abs(2) 
+  # therefore, up down separates the positive and negative logFC values
+  
+  up <- dc_con[dc_con$logFC > 0, ]
+  down <- dc_con[dc_con$logFC < 0, ] 
+               
+  # KEGG enrichment
+  ekegg_up <- enrichKEGG(up$ORF, "sce", pAdjustMethod = "bonferroni") 
+  ekegg_up_top <- ekegg_up@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "KEGG") 
+ 
+  ekegg_down <- enrichKEGG(down$ORF, "sce", pAdjustMethod = "bonferroni")
+  ekegg_down_top <- ekegg_down@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "KEGG")
+  
+  # GO enrichment
+  ego_bp_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                        ont = "BP", pAdjustMethod = "bonferroni")
+  ego_bp_up_top <- ego_bp_up@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "GO BP")
+  
+  ego_mf_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                        ont = "MF", pAdjustMethod = "bonferroni")
+  ego_mf_up_top <- ego_mf_up@result%>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "GO MF")
+  
+  ego_cc_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                        ont = "CC", pAdjustMethod = "bonferroni")
+  ego_cc_up_top <- ego_cc_up@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "GO CC")
+  
+  ego_bp_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "BP", pAdjustMethod = "bonferroni")
+  ego_bp_down_top <- ego_bp_down@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "GO BP")
+  
+  ego_mf_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "MF", pAdjustMethod = "bonferroni")
+  ego_mf_down_top <- ego_mf_down@result %>%
+    filter(p.adjust < 0.05) %>%
+    select(Description, geneID) %>%
+    mutate(enrichment = "GO MF")
+  
+  ego_cc_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "CC", pAdjustMethod = "bonferroni")
+  if(class(ego_cc_down) == "NULL") {
+    print("No enriched GO CC Down, moving on!")
+    # make empty df so obj is rbind compliant
+    ego_cc_down_top <- data.frame("Description" = character(), 
+                                  geneID = character(), 
+                                  enrichment = character())
+  } else {
+    ego_cc_down_top <- ego_cc_down@result %>%
+      filter(p.adjust < 0.05) %>%
+      select(Description, geneID) %>%
+      mutate(enrichment = "GO CC")
+  }
+  # COMBINE ENRICHMENT TABLES
+  down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) 
+  up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
+  # make an annotation table
+  up_tbl <- tableGrob(up_tbl, rows=NULL, theme = ttheme_minimal(base_size = 4, padding = unit(c(0.3, 0.3), "mm")))
+  down_tbl <- tableGrob(down_tbl, rows=NULL, theme = ttheme_minimal(base_size = 4, padding = unit(c(0.3, 0.3), "mm")))
+  
+  # PLOT DC
+  # prep DF for plotting. Rename DC* to DC so that the same innvocation can be used
+  # for ggplot across all plots
+  dc <- dc %>%
+    select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
+  
+  if(color_by == "brix"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix, label = ava_id)) +
+      geom_jitter() +
+      scale_color_viridis_c() +      
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") 
+  } else if(color_by == "ava") {
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava, label = ava_id)) +
+      geom_jitter() +
+      theme_minimal() +
+      labs(x = dc_num) +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") +
+      scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                    "AS" = as, "SMV" = smv, "SRH" = srh)) 
+  } else if(color_by == "hr"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), 
+                             label = ava_id)) +
+      geom_point() +
+      scale_color_brewer(palette = "Paired", name = "hour") + 
+      geom_jitter() +
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom")
+    }
+
+  # Plot chart and table into one object
+  plt_dc <- grid.arrange(down_tbl, plt_dc, up_tbl, ncol = 3, as.table=TRUE)
+  return(plt_dc)
+}
+
+dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "hr")){
+  # dc <- dc19
+  # dc_num <- "DC7"
+  # dc_con <- dc7_19
+  # color_by = "ava"
+  # separate to induced and repressed -- note that filtering for 
+  # log2fc is done in dc_contrast() when normalize_logFC = T. 
+  # default is a normalizes logFC > abs(2) 
+  # therefore, up down separates the positive and negative logFC values
+  
+  up_most <- dc_con %>%
+    filter(logFC_adj > 0) %>%
+    dplyr::select(COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>%
+    dplyr::select(-logFC_adj) %>%
+    head(n = 10)
+  
+  down_most <- dc_con %>%
+    filter(logFC_adj < 0) %>%
+    dplyr::select(COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>% 
+    dplyr::select(-logFC_adj) %>%
+    head(n = 10)
+  
+  # COMBINE ENRICHMENT TABLES
+  # make an annotation table
+  
+  if(nrow(up_most) == 0){
+    # make an empty table if there are no results
+    up_tbl <- tableGrob(data.frame(""), rows = NULL, theme = ttheme_minimal(base_size = 6, padding = unit(c(1, 1), "mm")))
+  } else{
+    up_tbl <- tableGrob(up_most, rows=NULL, theme = ttheme_minimal(base_size = 6, padding = unit(c(1, 1), "mm")))
+  }
+  if(nrow(down_most) == 0){
+    # make an empty table if there are no results
+    down_tbl <- tableGrob(data.frame(""), rows = NULL, theme = ttheme_minimal(base_size = 6, padding = unit(c(1, 1), "mm")))
+  } else{
+    down_tbl <- tableGrob(down_most, rows=NULL, theme = ttheme_minimal(base_size = 6, padding = unit(c(1, 1), "mm")))
+  }
+  # PLOT DC
+  # prep DF for plotting. Rename DC* to DC so that the same innvocation can be used
+  # for ggplot across all plots
+  dc <- dc %>%
+    dplyr::select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
+  
+  if(color_by == "brix"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix, label = ava_id)) +
+      geom_jitter() +
+      scale_color_viridis_c() +
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") 
+  } else if(color_by == "ava") {
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava, label = ava_id)) +
+      geom_jitter() +
+      theme_minimal() +
+      labs(x = dc_num) +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") +
+      scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                    "AS" = as, "SMV" = smv, "SRH" = srh)) 
+  } else if(color_by == "hr"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), 
+                             label = ava_id)) +
+      geom_point() +
+      scale_color_brewer(palette = "Paired", name = "hour") + 
+      geom_jitter() +
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom")
+  } else {
+      print("Please try a legitimate color values, either brix, ava, or hr")
+    }
+
+  # Plot chart and table into one object
+  plt_dc <- grid.arrange(down_tbl, plt_dc, up_tbl, ncol = 3, as.table=TRUE)
+  return(plt_dc)
+}
+
+dc_top_table <- function(dc_con){
+  up_most <- dc_con %>%
+    filter(logFC > 0) %>%
+    dplyr::select(ORF, COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>%
+    dplyr::select(-logFC_adj) %>%
+    head(n = 15)
+  
+  down_most <- dc_con %>%
+    filter(logFC < 0) %>%
+    dplyr::select(ORF, COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>%
+    dplyr::select(-logFC_adj) %>%
+    head(n = 15)
+  
+  most <- rbind(up_most, down_most)
+  
+  # add blank rows to enable printing when fewer than 30 diffex genes
+  if(30-nrow(most) == 0){
+    return(most)
+  } else {
+    blank_rows_to_add <- 30-nrow(most)
+    blank_rows <- data.frame(ORF = rep("", blank_rows_to_add),
+                             COMMON = rep("", blank_rows_to_add),
+                             logFC = rep("", blank_rows_to_add))
+    most <- rbind(most, blank_rows)
+    return(most)
+  }
+}
+```
+
+```{r colors_avas}
+#  ordered south to north
+srh = "#FFAABB" # pink
+smv = "#EE8866" # orange
+as  = "#EEDD88" # light yellow
+snc = "#99DDFF" # light cyan 
+crn = "#AAAA00" # olive
+rrv = "#BBCC33" # pear 
+av  = "#77AADD" # light blue
+or  = "#DDDDDD" # pale grey
+```
+
+# Introduction
+
+Wine is chemically and microbially complex. 
+During primary fermentation of wine, must derived from *Vitis vinifera* crushed grapes is fermented into ethanol. 
+*Saccharomyces cerevisiae* is usually the dominant fermenter. 
+
+While the core processes of wine fermentation are similar between most fermentations, there is tremendous variation in grape cultivars, vineyard site locations, fermentative organisms, and wine making styles. 
+Each of these factors may impact the final product.
+
+Other information, decided once I know what final set of results/messages are.
+
+In this study, we aimed to understand how vineyard site impacts primary fermentation of Pinot noir wine.
+We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon (**Figure \@ref(fig:map)**). We profiled each fermentation using time-course RNA sequencing and used *Saccharomyces cerevisiae* gene expression as an indicator of similarities and difference across fermentation. We find...
+
+```{r map, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
+include_graphics("figures/map_and_sampling.pdf") 
+```
+
+# Results
+
+```{r metadata}
+info <- read_csv("../samples_ava.csv")
+info$ava_id <- factor(info$ava_id, levels = c('OR1', 'OR2', 'AV1', 'AV2', 'RRV1', 
+                                              'RRV2', 'RRV3', 'SNC1', 'SNC2', 
+                                              'CRN1', 'AS1', 'AS2', 'SMV1', 
+                                              'SMV2','SRH1'))
+
+info$ava <- factor(info$ava, levels = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 
+                                        'AS', 'SMV','SRH'))
+```
+
+```{r diffusion_mapping_17, include = F}
+counts17 <- read_tsv("../v2017/outputs/counts/raw_counts.tsv") %>%
+  filter(grepl(pattern = "^Y", x = gene)) %>%
+  as.data.frame() %>%
+  column_to_rownames("gene")
+colnames(counts17) <- gsub("_readcounts.txt", "", colnames(counts17))
+m17 <- sweep(counts17, 2, colSums(counts17), `/`)
+m17 <- t(m17)                                             # transpose counts
+
+# build diffusion map
+dm17 <- DiffusionMap(m17, k = 31, n_eigs = 144)
+
+qplot(y = eigenvalues(dm17)) +
+  theme_minimal() +
+  labs(x ='Diffusion component (DC)', y ='Eigenvalue') +
+  ggtitle(paste0("k = ", dm17@k))
+
+# create a df with each DC that occurs after a large jump and record metadata
+dc17 <- data.frame(DC1 = dm17$DC1, DC2 = dm17$DC2, DC3 = dm17$DC3, 
+                   DC4 = dm17$DC4, DC5 = dm17$DC5, DC6 = dm17$DC6, 
+                   DC7 = dm17$DC7, DC8 = dm17$DC8, DC9 = dm17$DC9, DC10 = dm17$DC10) %>%
+  rownames_to_column("sample") %>%
+  left_join(info, by = c("sample" = "id"))
+```
+
+```{r diffusion_mapping_19, include = F}
+counts19 <- read_tsv("../v2019/outputs/counts/raw_counts.tsv") %>%
+  dplyr::filter(grepl(pattern = "^Y", x = gene)) %>%
+  dplyr::select(-`2019_inoculum_SRH1_readcounts.txt`,
+                -`2019_inoculum_AS1_readcounts.txt`, 
+                -`2019_inoculum_SMV2_readcounts.txt`,
+                -`2019_inoculum_AS2_readcounts.txt`,
+                -`2019_inoculum_RRV1_readcounts.txt`,
+                -`2019_inoculum_SMV1_readcounts.txt`) %>%
+  as.data.frame() %>%
+  column_to_rownames("gene")
+colnames(counts19) <- gsub("_readcounts.txt", "", colnames(counts19))
+
+m19 <- sweep(counts19, 2, colSums(counts19), `/`)
+m19 <- t(m19)                                             # transpose counts
+# build diffusion map
+dm19 <- DiffusionMap(m19, k = 41, n_eigs = 148)
+
+qplot(y = eigenvalues(dm19)) +
+  theme_minimal() +
+  labs(x ='Diffusion component (DC)', y ='Eigenvalue') +
+  ggtitle(paste0("k = ", dm19@k))
+
+# create a df with each DC that occurs after a large jump and record metadata
+dc19 <- data.frame(DC1 = dm19$DC1, DC2 = dm19$DC2, DC3 = dm19$DC3, DC4 = dm19$DC4,
+                   DC5 = dm19$DC5, DC6 = dm19$DC6, DC7 = dm19$DC7, DC8 = dm19$DC8,
+                   DC9 = dm19$DC9, DC10 = dm19$DC10) %>%
+  rownames_to_column("sample") %>%
+  left_join(info, by = c("sample" = "id"))
+```
+
+```{r diffex17}
+d0_17 <- DGEList(counts17)                         # initialize the DGE object
+d17 <- calcNormFactors(d0_17)
+dc_mm17 <- model.matrix(~dc17$DC1 + ~dc17$DC2 + ~dc17$DC3 + dc17$DC4 + dc17$DC5 + 
+                          dc17$DC6 + dc17$DC7 + dc17$DC8 + dc17$DC9 + dc17$DC10)
+dc_y17 <- voom(d17, dc_mm17, plot = F)
+dc_fit17 <- lmFit(dc_y17, dc_mm17)
+dc1_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 2) # Test "DC1" coefficient
+dc2_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 3) # Test "DC2" coefficient
+dc3_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 4) # Test "DC3" coefficient
+dc4_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 5) # Test "DC4" coefficient
+dc5_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 6) # Test "DC5" coefficient
+dc6_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 7) # Test "DC6" coefficient
+dc7_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 8) # Test "DC7" coefficient
+dc8_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 9) # Test "DC8" coefficient
+dc9_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 10) # Test "DC9" coefficient
+dc10_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 11) # Test "DC10" coefficient
+```
+
+```{r diffex19}
+d0_19 <- DGEList(counts19)              # initialize the DGE object
+d19 <-calcNormFactors(d0_19)            # calculate normalization factors
+dc_mm19 <- model.matrix(~dc19$DC1 + ~dc19$DC2 + ~dc19$DC3 + dc19$DC4 + dc19$DC5 + 
+                          dc19$DC6 + dc19$DC7 + ~dc19$DC8 + dc19$DC9 + dc19$DC10)
+dc_y19 <- voom(d19, dc_mm19, plot = F)
+dc_fit19 <- lmFit(dc_y19, dc_mm19)
+dc1_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 2) # Test "DC1" coefficient
+dc2_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 3) # Test "DC2" coefficient
+dc3_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 4) # Test "DC3" coefficient
+dc4_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 5) # Test "DC4" coefficient
+dc5_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 6) # Test "DC5" coefficient
+dc6_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 7) # Test "DC6" coefficient
+dc7_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 8) # Test "DC7" coefficient
+dc8_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 9) # Test "DC8" coefficient
+dc9_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 10) # Test "DC9" coefficient
+dc10_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 11) # Test "DC10" coefficient
+```
+
+## Diffusion mapping captures biological trends in primary fermentation
+
+Diffusion mapping is a manifold learning technique that uses information from the *k* most similar samples when constructing relationships among samples [@coifman2005geometric; @coifman2006diffusion]. 
+It is a non-linear dimensionality reduction technique that generates latent variables that capture diminishing variation between samples.
+We refer to these latent variables as diffusion components, and to scatter plots of diffusion components as diffusion maps. 
+
+While traditional differential expression works well for categorical comparisons or synchronous time-series, this dataset was challenging to analyze because it was asynchronous.
+While samples were taken at the same time, brix, or sugar concentration, was asynchronous among fermentations. 
+This is caused when fermentations progress at different speeds. 
+To enable us to perform differential expression with these samples, we used diffusion components as latent variables and perform continuous differential expression (linear regression) using the limma R package. 
+While each diffusion component captures latent structure within the dataset, lower diffusion components capture the most structure.
+
+## Diffusion component 1 captures change in brix
+
+Diffusion component 1 captures the dominant structure between samples. 
+In **Figure \@ref(fig:dc1)**, points are plotted along diffusion component 1, but ordered by brix. 
+To test whether latent variables generated by diffusion mapping capture biologically-relevant structure of *S. cerevisiae* gene expression during wine fermentation, we performed differential expression using the continuous variable brix and the values of diffusion component 1. 
+For both vintages, the majority of differentially expressed genes were shared by both methods (**Figure \@ref(fig:dc1)C, Figure \@ref(fig:upsetgrid)**). 
+This indicates that diffusion mapping captures relationships between samples driven by biological differences. 
+Further, the largest fraction of differentially expressed genes are shared between vintages using both methods.
+This indicates that there is a conserved response by *S. cervisiae* across fermentations as brix declines.
+
+```{r diffex_brix_17}
+brix_counts17  <- counts17                    # non-wine samples already filtered
+d0_17 <- DGEList(brix_counts17)               # initialize the DGE object
+d17 <- calcNormFactors(d0_17)
+brix_mm17 <- model.matrix(~dc17$brix)
+brix_y17 <- voom(d17, brix_mm17, plot = F)
+brix_fit17 <- lmFit(brix_y17, brix_mm17)
+brix_17 <- dc_contrast(dc_fit = brix_fit17, coeff = 2) # Test brix coefficient
+```
+
+```{r diffex_brix_19, eval = T}
+brix_counts19  <- counts19[ , 1:150]               # remove inoculum samples
+d0_19 <- DGEList(brix_counts19)                    # initialize the DGE object
+d19 <- calcNormFactors(d0_19)
+brix19 <- info %>%
+  dplyr::filter(year == 2019) %>%
+  dplyr::filter(!is.na(brix))
+brix_mm19 <- model.matrix(~brix19$brix)
+brix_y19 <- voom(d19, brix_mm19, plot = F)
+brix_fit19 <- lmFit(brix_y19, brix_mm19)
+brix_19 <- dc_contrast(dc_fit = brix_fit19, coeff = 2) # Test brix coefficient
+```
+
+```{r brixcorr}
+# make sure that everything has the same number of genes by not filtering by expression
+# consider doing this from the outset (see above code) instead of just for this
+# figure
+
+brix_19_all <- dc_contrast(dc_fit = brix_fit19, coeff = 2, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+brix_17_all <- dc_contrast(dc_fit = brix_fit17, coeff = 2,
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+dc1_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 2, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+dc1_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 2,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+# all.equal(brix_19_all$ORF, dc1_19_all$ORF, brix_17_all$ORF, dc1_17_all$ORF)
+
+all_l2fc <- data.frame(brix19 = brix_19_all$logFC,
+                       brix17 = brix_17_all$logFC,
+                       DC1_17 = dc1_17_all$logFC,
+                       DC1_19 = dc1_19_all$logFC) 
+corr_l2fc <- cor(all_l2fc)
+colnames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
+rownames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
+
+
+corr_plt <- ggcorrplot(corr_l2fc, type = "upper", show.diag = T, lab = T, 
+                       hc.order = T, digits = 3, lab_size = 3, tl.cex = 9, 
+                       lab_col = "white", show.legend = T,  legend.title =  "",
+                       colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  scale_fill_gradient2(low = brewer.pal(n = 3, name = "RdYlBu")[1], 
+                       high = brewer.pal(n = 3, name = "RdYlBu")[3], 
+                       mid = brewer.pal(n = 3, name = "RdYlBu")[2], 
+                       midpoint = 0, limit = c(0, 1), space = "Lab", 
+                       name = "") +
+  theme(legend.position = "bottom")
+```
+
+```{r dc1, fig.height = 3.5, fig.cap = "Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in **A.** the 2017 vintage and **B.** the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **C.** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
+p17 <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  ggtitle("2017") 
+
+p19 <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  ggtitle("2019") 
+
+ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c("A", "B")), corr_plt, labels = c("", "C"))
+```
+
+Decreasing brix during fermentation accounts for the largest variation across samples in both vintages. 
+In both vintages, processes involved in ribosome biogenesis and biosynthesis of amino acids are enriched in induced genes when brix is high, while authophagy and endocytosis is enriched in induced genes when brix is low (**Figure \@ref(fig:DC1viz2017)**, **Figure \@ref(fig:DC1viz2019)**).
+Of the top genes induced when brix low, we see genes like *HXT6*, which encodes a high-affinity hexose transporter that is required at the end of alchoholic fermentation (CITATION). *HXT6*, has a high affinity for fructose, which is the only sugar left at this stage of fermentation (CITATION). 
+(discuss *RSB1*, *CYC7*, *DAL80*).
+
+## Other diffusion components also capture structure
+
+Given that the first diffusion component captures the dominant biological transition that *S. cerevisiae* undergoes during primary fermentation, we can examine subsequent diffusion components to understand non-dominant transitions that occur, particularly those that are different between vineyard sites.
+
+**Figure \@ref(fig:allDCs2017)** and **Figure \@ref(fig:allDCs2019)** depict one dimensional plots of the first ten diffusion components for each vintage, while **Table \@ref(tab:numdiffex)** summarizes the number of differentially expressed genes across each component. 
+When colored by brix, the structure of the samples is sometimes apparent. 
+(Note samples at the origin of a diffusion component are neutral toward structure for that component.)
+For example, in the 2019 vintage, DC2, DC4, DC6, and DC7 capture differences in early fermenation, DC5 captures differences in late fermentation, and DC3 captures difference in the inoculum samples. 
+In the 2017 vintage, DC2, DC3, DC5, and DC6 capture variation in late-fermentation samples.
+While there is generaly a diminishing number of differentially expressed genes in higher components, there is still a significant difference in each of these components (**Table \@ref(tab:numdiffex)**).
+
+```{r all_dc17_brix}
+dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_17p <-ggplot(dc17, aes(x = DC5, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_17p <-ggplot(dc17, aes(x = DC6, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_17p <-ggplot(dc17, aes(x = DC7, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_17p <-ggplot(dc17, aes(x = DC8, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc9_17p <-ggplot(dc17, aes(x = DC9, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc10_17p <-ggplot(dc17, aes(x = DC10, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17 <- ggarrange(dc1_17p, dc2_17p, dc3_17p, dc4_17p, dc5_17p, dc6_17p, 
+                       dc7_17p, dc8_17p, dc9_17p, dc10_17p, legend = "bottom",
+                       ncol = 1, common.legend = T, labels = c("B", "", "", "", "", "", "", "", "", ""))
+```
+
+```{r all_dc19_brix}
+dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc9_19p <-ggplot(dc19, aes(x = DC9, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc10_19p <-ggplot(dc19, aes(x = DC10, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+all_dc_19 <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
+                       dc7_19p, dc8_19p, dc9_19p, dc10_19p, ncol = 1, legend = "bottom",
+                       common.legend = T, labels = c("B", "", "", "", "", "", "", "", "", ""))
+```
+
+```{r all_dc17_ava}
+dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_17p <-ggplot(dc17, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_17p <-ggplot(dc17, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_17p <-ggplot(dc17, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_17p <-ggplot(dc17, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc9_17p <-ggplot(dc17, aes(x = DC9, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc10_17p <-ggplot(dc17, aes(x = DC10, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17_ava <- ggarrange(dc1_17p, dc2_17p, dc3_17p, dc4_17p, dc5_17p, dc6_17p, 
+                           dc7_17p, dc8_17p, dc9_17p, dc10_17p, legend = "bottom",
+                           ncol = 1, common.legend = T, labels = c("A", "", "", "", "", "", "", "", "", ""))
+```
+
+```{r all_dc19_ava}
+dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+          "AS" = as, "SMV" = smv, "SRH" = srh))
+
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc9_19p <-ggplot(dc19, aes(x = DC9, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc10_19p <-ggplot(dc19, aes(x = DC10, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+all_dc_19_ava <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
+                           dc7_19p, dc8_19p, dc9_19p, dc10_19p, ncol = 1, legend = "bottom",
+                           common.legend = T, labels = c("A", "", "", "", "", "", "", "", "", ""))
+```
+
+```{r allDCs2017, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2017 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
+ggarrange(all_dc_17_ava, all_dc_17, legend = "bottom")
+```
+
+```{r allDCs2019, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2019 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
+ggarrange(all_dc_19_ava, all_dc_19, legend = "bottom")
+```
+
+```{r numdiffex}
+num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4", 
+                                                 "DC5", "DC6", "DC7", "DC8",
+                                                 "DC9", "DC10"),
+                         induced = c(length(filter(dc1_17, logFC > 3)$ORF),
+                                     length(filter(dc2_17, logFC > 3)$ORF),
+                                     length(filter(dc3_17, logFC > 3)$ORF),
+                                     length(filter(dc4_17, logFC > 3)$ORF),
+                                     length(filter(dc5_17, logFC > 3)$ORF),
+                                     length(filter(dc6_17, logFC > 3)$ORF),
+                                     length(filter(dc7_17, logFC > 3)$ORF),
+                                     length(filter(dc8_17, logFC > 3)$ORF),
+                                     length(filter(dc9_17, logFC > 3)$ORF),
+                                     length(filter(dc10_17, logFC > 3)$ORF)),
+                         repressed = c(length(filter(dc1_17, logFC < -3)$ORF),
+                                       length(filter(dc2_17, logFC < -3)$ORF),
+                                       length(filter(dc3_17, logFC < -3)$ORF),
+                                       length(filter(dc4_17, logFC < -3)$ORF),
+                                       length(filter(dc5_17, logFC < -3)$ORF),
+                                       length(filter(dc6_17, logFC < -3)$ORF),
+                                       length(filter(dc7_17, logFC < -3)$ORF),
+                                       length(filter(dc8_17, logFC < -3)$ORF),
+                                       length(filter(dc9_17, logFC < -3)$ORF),
+                                       length(filter(dc10_17, logFC < -3)$ORF)),
+                         induced = c(length(filter(dc1_19, logFC > 3)$ORF),
+                                     length(filter(dc2_19, logFC > 3)$ORF),
+                                     length(filter(dc3_19, logFC > 3)$ORF),
+                                     length(filter(dc4_19, logFC > 3)$ORF),
+                                     length(filter(dc5_19, logFC > 3)$ORF),
+                                     length(filter(dc6_19, logFC > 3)$ORF),
+                                     length(filter(dc7_19, logFC > 3)$ORF),
+                                     length(filter(dc8_19, logFC > 3)$ORF),
+                                     length(filter(dc9_19, logFC > 3)$ORF),
+                                     length(filter(dc10_19, logFC > 3)$ORF)),
+                         repressed = c(length(filter(dc1_19, logFC < -3)$ORF),
+                                       length(filter(dc2_19, logFC < -3)$ORF),
+                                       length(filter(dc3_19, logFC < -3)$ORF),
+                                       length(filter(dc4_19, logFC < -3)$ORF),
+                                       length(filter(dc5_19, logFC < -3)$ORF),
+                                       length(filter(dc6_19, logFC < -3)$ORF),
+                                       length(filter(dc7_19, logFC < -3)$ORF),
+                                       length(filter(dc8_19, logFC < -3)$ORF),
+                                       length(filter(dc9_19, logFC < -3)$ORF),
+                                       length(filter(dc10_19, logFC < -3)$ORF))
+)
+
+kable(num_diffex, "latex", booktabs = T, col.names = c("diffusion component", "induced", "repressed", "induced", "repressed"),
+      caption = 'Number of significantly differentially expressed genes for the top diffusion components for the 2017 and 2019 vintages') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c(" " = 1, "2017" = 2, "2019" = 2), align = "l", escape = F)
+```
+
+
+
+```{r try_all_by_all_dc_corr, eval = F}
+
+# brix, hr, initial_brix, initial_ph,
+# initial_nopa, initial_nh3, initial_MA, lon, lat, total_gdd_c, total_ppt
+dc1_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 2,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc1_17_lfc = logFC_adj)
+dc2_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 3,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc2_17_lfc = logFC_adj)
+dc3_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 4,
+                         adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc3_17_lfc = logFC_adj)
+dc4_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 5,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc4_17_lfc = logFC_adj)
+dc5_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 6,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc5_17_lfc = logFC_adj)
+dc6_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 7,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc6_17_lfc = logFC_adj)
+dc7_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 8,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc7_17_lfc = logFC_adj)
+dc8_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 9,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc8_17_lfc = logFC_adj)
+dc9_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 10,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc9_17_lfc = logFC_adj)
+dc10_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 11,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc10_17_lfc = logFC_adj)
+
+## 2019
+dc1_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 2,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc1_19_lfc = logFC_adj)
+dc2_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 3,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc2_19_lfc = logFC_adj)
+dc3_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 4,
+                         adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc3_19_lfc = logFC_adj)
+dc4_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 5,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc4_19_lfc = logFC_adj)
+dc5_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 6,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc5_19_lfc = logFC_adj)
+dc6_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 7,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc6_19_lfc = logFC_adj)
+dc7_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 8,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc7_19_lfc = logFC_adj)
+dc8_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 9,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc8_19_lfc = logFC_adj)
+dc9_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 10,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc9_19_lfc = logFC_adj)
+dc10_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 11,
+                          adj.p.filt = 1, filter_logFC = F)  %>%
+  arrange(ORF) %>%
+  select(ORF, COMMON, dc10_19_lfc = logFC_adj)
+
+## COMBINE
+dc_lfc_all <- list(dc1_17_all, dc2_17_all, dc3_17_all, dc4_17_all,
+                   dc5_17_all, dc6_17_all, dc7_17_all, dc8_17_all,
+                   dc9_17_all, dc10_17_all, dc1_19_all, dc2_19_all, 
+                   dc3_19_all, dc4_19_all, dc5_19_all, dc6_19_all, 
+                   dc7_19_all, dc8_19_all, dc9_19_all, dc10_19_all) %>% 
+  purrr::reduce(left_join, by = c("ORF", "COMMON")) %>%
+  select(-ORF) %>%
+  column_to_rownames("COMMON")
+corr_all <- cor(dc_lfc_all) 
+is.na(corr_all) <- abs(corr_all) < 0.5
+is.na(r) <- abs(r) < 0.6
+corr_all
+ggcorrplot(corr_all, type = "upper", show.diag = T, lab = T,
+           digits = 2, lab_size = 3, tl.cex = 10, 
+           lab_col = "white", show.legend = T,  legend.title =  "",
+           colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  theme(legend.position = "bottom") 
+
+
+
+ggcorrplot(cor(dc_lfc_all), type = "upper", show.diag = F, lab = T,
+           sig.level = 0.0000001, p.mat = cor_pmat(dc_lfc_all), insig = "blank", 
+           hc.order = T, digits = 2, lab_size = 2, tl.cex = 9, 
+           lab_col = "white", show.legend = T,  legend.title =  "",
+           colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  theme(legend.position = "bottom")
+```
+
+## Differences among sites in the 2017 vintage
+
+Plotting diffusion components together can further reveal structure in the data. 
+In **Figure \@ref(fig:v2017DC2vsDC3)**, we see DC2 vs DC3 for the 2017 vintage. 
+Both components capture end of fermentation differences among samples. 
+In 2017, we sampled each fermentation starting 16 hours after inoculation and then every 24 hours (**Figure \@ref(fig:map)**), which likely corresponds to late growth phase and stationary phase of *S. cerevisiae*. 
+This sampling thereby captured nutrient limiting conditions of end of fermentation.
+
+```{r v2017DC2vsDC3, fig.height=3, fig.cap = "Diffusion components capture 2 and 3 late fermentation differences among primary fermentations from different sites in the 2017 vintage."}
+
+by_brix_23 <- ggplot(dc17, aes(x = DC2, y = DC3, color = brix, label = ava)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_ava_23 <- ggplot(dc17, aes(x = DC2, y = DC3, color = ava, label = ava)) +
+  geom_point() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_brix_67 <- ggplot(dc17, aes(x = DC3, y = DC4, color = brix, label = ava)) +
+  geom_point() +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_ava_67 <- ggplot(dc17, aes(x = DC3, y = DC4, color = ava, label = brix)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+ggarrange(by_brix_67, by_ava_67, ncol = 2, legend = "bottom", labels = c("A", "B"))
+ggarrange(by_brix_23, by_ava_23, ncol = 2, legend = "bottom", labels = c("A", "B"))
+```
+
+In DC2 vs DC3, we see two clusters form. 
+These clusters segragate along DC2. The first is composed of samples from vineyards *OR1*, *OR2*, and *SNC1* from end of fermentation, while the second is composed of samples from vineyards *RRV1*, *RRV3*, *AS1*, *AS2*, *SMV1*, *SMV2*, and *SRH1*. 
+The top induced genes along DC2 were *THI13*, *THI11*, and *THI4* (**Table \@ref(tab:kable17most1)**), while induced genes are enriched for pathways like fatty acid metabolism and steroid biosynthesis (**Figure \@ref(fig:DC2viz2017)**).
+Conversely, ribosome biogenesis and RNA degradation are enriched in repressed genes. 
+These pathways drive separation of mid and late fermentation samples. 
+
+Along DC3, the primary component along which the late fermentation cluster separates, induced genes are only enriched for phenylalanine metabolism. 
+However, repressed genes are enriched in many pathways, including methane metabolism, pentose-phosphate pathway, galactose metabolism, and steroid biosynthesis. 
+This suggests that these pathways are less expressed in the late fermenation cluster.
+
+Along DC7, samples from site *SNC1* again form an outlying cluster. 
+While repressed genes are not enriched in any pathways, induced genes are enriched for pathways like N-glycan biosynthesis, amino sugar & nucleotide sugar metabolism, and nicotinate & nicotinamide metabolism, again suggesting these pathways are less expressed in *SNC1* (**Figure \@ref(fig:DC7viz2017)**). 
+
+Along DC6 and DC7, early fermentation samples from sites *SMV1* and *SMV2* are shifted away from the origin, potentially indicating a different metabolic strategy used at the beginning of fermentation for these sites. 
+
+## Differences among sites in 2019 vintage
+
+In 2019, we altered the sampling scheme to capture early fermentation more, as adaptation to the wine environment may be different for different fermentations and show what type of stress the cells are under. 
+
+Diffusion components 2 and 4 separate early fermentation samples (**Figure \@ref(fig:v2019dc2dc3)**). 
+Sample stake at 2hr, 6hr, and 16hr form distinct clusters, where DC2 separates all 3 time points and DC4 separates the 6hr samples from teh other timepoints. 
+Along DC2, genes *TIR1*, *TIR2*, *TIR3*, *DAN1*, and *TIR4* are the top 5 repressed genes, indicating gene expression for cell wall remodelling is highest at 16 hrs post inoculation (**Table \@ref(tab:kable19most)**).
+Pathways like ribosome biogenesis, RNA transport, RNA degradation, and basal transcription factors are induced along DC2, while biosynthesis of amino acids, carbon metabolism, and steroid biosythesis are enriched in repressed genes (**Figure \@ref(fig:DC2viz2019)**), reflecting the stressful transition yeast make upon inoculation.
+
+Along DC4, repressed genes are enriched for proteasome, yeast cell cycle, DNA replication, mismatch repair, terpenoid biosynthesis, and one carbon pool by folate. 
+These pathways are more highly expressed in the 6hr samples. 
+Samples from both *OR2* and *SRH1* are accelerated along the transition from 2hr to 6hr, and 6hr to 16hr. However, overall, there is high similarity among sites in DC2 and DC4. 
+Diffusion component 2 separates 2 hour from 16 hours samples, indicating that this is the largest source of variation after metabolic remodeling that occurs other than decrease in brix. 
+
+
+```{r v2019dc2dc3, fig.height = 3, fig.cap = "Diffusion component 2 and diffusion component 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples for three clusters."}
+by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+  geom_point(alpha = .8) +
+  scale_color_brewer(palette = "Paired", name = "hour") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_ava <- ggplot(dc19, aes(x = DC2, y = DC3, color = ava, label = hr)) +
+  geom_point(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_hour_67 <- ggplot(dc19, aes(x = DC4, y = DC10, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+  geom_point(alpha = .8) +
+  scale_color_brewer(palette = "Paired", name = "hour") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_ava_67 <- ggplot(dc19, aes(x = DC4, y = DC10, color = ava, label = ava)) +
+  geom_point() +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+#ggarrange(by_hour_67, by_ava_67, ncol = 2, legend = "bottom", labels = c("A", "B"))
+
+ggarrange(by_hour, by_ava, ncol = 2, legend = "bottom", labels = c("A", "B"))
+```
+
+
+Conversely, diffusion component 6 and 7 capture separation in early fermentation samples. Along DC6, samples from sites *SMV1*, *SMV2* (1), and to a lesser extent *RRV3* and *AV1* separate from other 2hr samples. 
+Only one gene is induced (*PDC5*), and two genes are repressed (*ARG1* and *RPS14B*).
+*PDC5* is a minor isoform of pyruvate decarboxylase, and is a key enzyme in alcoholic fermentation. 
+It is also involved in amino acid catabolism.
+*ARG1* is part of the arginine biosynthesis pathway, while *RPS14B* is required for ribosome assembly. 
+This indicates that...
+
+Along DC7, samples from the 2hr, 6hr, and 16hr time points separate. The *SRH1* 2hr and 6hr samples separate in one direction the most, followed by *OR2* 2hr and 6hr and *SMV2* 16hr. 
+On the other side *CRN1* and *AS1* separate. 
+Only GO term transmembrane transport is enriched in induced genes, and only intracellular mRNA localization is enriched in repressed genes (**Figure S14**).
+
+Diffusion component 3 separates inoculum from all other samples (see **Figure 4B**). 
+Inoculum samples are enriched for metabolic pathways like carbon metabolism, TCA cycle, pyruvate metabolism, and glyoxylate metabolism, among others (**Figure S10**). 
+Conversely,  all wine samples are enriched for ribosome, biosynthesis of amino acids, glcolysis/gluconeogenesis, steroid biosynthesis, and terpenoid backbone (**Figure S10**). 
+
+Late fermentation samples separate in diffusion component 5. 
+Given that two components dominated by changes in early fermentation occur before this, this indicates that there is more variation in the early fermentation response than there is in late fermentation.
+While samples largely separate by brix, with dry fermentations segregating to one side, samples from site *AS2* break this trend. 
+Induced genes in dry samples are enriched for protein processing in the ER, and repressed genes are enriched for pathways like ribosomes, carbon metabolism, purine metabolism, and fatty acid metabolism (**Figure S12**)
+
+
+```{r v2019dc8dc10, fig.height = 3, fig.cap = "Diffusion component 8 and diffusion component 10 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples, especially those from regions AS, AV, and SNC, form distinct clusters."}
+by_hour <- ggplot(dc19, aes(x = DC8, y = DC10, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_point() +
+  scale_color_brewer(palette = "Paired", name = "hour") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+by_ava <- ggplot(dc19, aes(x = DC8, y = DC10, color = ava, label = ava_id)) +
+  geom_point() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                  "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+
+ggarrange(by_hour, by_ava, ncol = 2, legend = "bottom", labels = c("A", "B"))
+```
+
+# Discussion
+
+In this study, we paired diffusion mapping with differential expression to capture primary fermentation of pinot noir wine measured with RNA-sequencing of musts from 15 vineyard sites. 
+The time-ordered clustering of replicates and samples indicates that diffusion mapping captures time-varying patterns in this expression data set. 
+
+Benefits of this method:
+
++ unbalanced sample designs (e.g. no replicates), because it uses linear regression over a continuous variable.
++ however, replication is still a good idea to make sure that a sample is not anomalous
++ uneven time series
++ compared to other methods, isolates time-varying responses in a component
++ easy to interpret a lot of samples given their relative distance to one another  
+
+# Methods
+
+## Sequencing and preprocessing
+
+We normalized read counts based on total number of reads per sample (library size) prior to constructing the diffusion map. 
+As input to differential expression, we used raw sequencing counts and performed filtering and normalization with the limma package using the `filterByExpr()` and `calcNormFactors()` functions [@limma2015].
+
+## Construction of Diffusion Maps
+
+Prior to diffusion map construction, we filtered gene counts to non-mitochondrial mRNA. 
+We built the diffusion map using the Bioconductor package destiny [@destiny2015].
+The destiny diffusion map algorithm accounts for noise types inherent in 
+RNA-sequencing data such as missing values and uncertainties in measurements.
+
+To select number of neighbors (k-size) in the construction of the diffusion map, we tested all values of *k* from 1 - (*n* - 2). 
+We selected the k-size that produced a graph with one component and that maximized the difference between sequential eigenvalues when eigenvalues were ordered. 
+We selected k-sizes of 31 for the 2017 vintage and 41 for the 2019 vintage.
+
+## Differential expression
+
+To determine which genes drove separation of samples along each component, we used differential expression to correlate each gene with diffusion component values.
+We used limma to fit a linear regression model to each gene [@limma2015].
+Using this model, the log2FC is the slope of the line for each unit increase in the diffusion component. 
+Because diffusion components were small, we used stringentcut offs for differential expression (absolute log2FC > 3, p < .01). 
+
+## Identification of genes involved in primary fermentation 
+
+To identify whether our approach recapitulated previous findings about gene expression during primary fermentation of wine, we used lists of significant genes identified by [@rossignol2003genome] from their time course microarray of synthetic must.
+We intersected the open reading frame names with those we identified as significantly differentially expressed along each diffusion component.
+
+# References
+
+<div id="refs"></div>
+
+
+\newpage
+# Supplementary material {-}
+
+\beginsupplement
+
+```{r brix_upset17}
+brix_list_17 <- list(dc1_17_induced = filter(dc1_17, logFC > 3)$ORF,
+                     dc1_17_repressed = filter(dc1_17, logFC < -3)$ORF,
+                     brix_17_induced = filter(brix_17, logFC > 0)$ORF,
+                     brix_17_repressed = filter(brix_17, logFC < -0)$ORF
+)
+upset_brix_17 <- UpSetR::upset(fromList(brix_list_17), nsets = 8, nintersects = 200, 
+                       order.by = "freq", keep.order = T)
+```
+
+```{r brix_upset19}
+brix_list_19 <- list(dc1_19_induced = filter(dc1_19, logFC > 3)$ORF,
+                     dc1_19_repressed = filter(dc1_19, logFC < -3)$ORF,
+                     brix_19_induced = filter(brix_19, logFC > 0)$ORF,
+                     brix_19_repressed = filter(brix_19, logFC < 0)$ORF
+)
+upset_brix_19 <- UpSetR::upset(fromList(brix_list_19), nsets = 8, nintersects = 200, 
+                               order.by = "freq", keep.order = T)
+```
+
+```{r dc1_upset}
+dc1_list <- list(dc1_17_induced = filter(dc1_17, logFC > 3)$ORF,
+                 dc1_17_repressed = filter(dc1_17, logFC < -3)$ORF,
+                 dc1_19_induced = filter(dc1_19, logFC > 3)$ORF,
+                 dc1_19_repressed = filter(dc1_19, logFC < -3)$ORF)
+upset_dc1 <- UpSetR::upset(fromList(dc1_list), nsets = 8, nintersects = 200, 
+                   order.by = "freq", keep.order = T)
+```
+
+```{r brix_upset}
+brix_list <- list(brix_17_induced = filter(brix_17, logFC > 0)$ORF,
+                  brix_17_repressed = filter(brix_17, logFC < -0)$ORF,
+                  brix_19_induced = filter(brix_19, logFC > 0)$ORF,
+                  brix_19_repressed = filter(brix_19, logFC < 0)$ORF)
+upset_brix <- UpSetR::upset(fromList(brix_list), nsets = 8, nintersects = 200, 
+                   order.by = "freq", keep.order = T)
+```
+
+```{r upsetgrid, fig.height= 5, fig.cap="Upset plot depicting intersections between differentially expressed genes using diffusion component 1 or brix as continuous variable. **A.** Intersection of differentially expressed genes from the 2017 vintage. **B.** Intersection of genes from the 2019 vintage. **C.** Intersection of genes differentially expressed along diffusion component 1 from the 2017 and 2019 vintages. **D** Intersection of genes differentially expressed relative to change in brix from the 2017 and 2019 vintages."}
+
+plot_grid(as.grob(upset_brix_17), as.grob(upset_brix_19), 
+          as.grob(upset_dc1), as.grob(upset_brix),
+          ncol = 2, labels = c("A", "B", "C", "D"))
+```
+
+## Plots with diffex
+
+```{r annotatedplts, eval = T}
+
+dc_top_diffex_plot(dc = dc19, dc_num = "DC1", dc_con = dc1_19, color_by = "brix")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "ava")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, color_by = "ava")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava")
+#dc_top_diffex_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_by = "ava")
+dc_top_diffex_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava")
+
+dc_top_diffex_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC3", dc_con = dc3_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC4", dc_con = dc4_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC5", dc_con = dc5_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC6", dc_con = dc6_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC7", dc_con = dc7_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC8", dc_con = dc8_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC9", dc_con = dc9_17, color_by = "ava")
+dc_top_diffex_plot(dc = dc17, dc_num = "DC10", dc_con = dc10_17, color_by = "ava")
+
+
+# dc_top_enrich_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "brix")
+# dc_top_enrich_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "brix")
+# dc_top_enrich_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava")
+# dc_top_enrich_plot(dc = dc17, dc_num = "DC7", dc_con = dc7_17, color_by = "ava")
+# dc_top_enrich_plot(dc = dc17, dc_num = "DC9", dc_con = dc9_17, color_by = "ava")
+```
+
+## Tables of top differentially expressed genes
+
+```{r kable17most1}
+most1_17 <- dc_top_table(dc1_17)
+most2_17 <- dc_top_table(dc2_17)
+most3_17 <- dc_top_table(dc3_17)
+kable(cbind(most1_17, most2_17, most3_17), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 1" = 3, "diffusion component 2" = 3,
+                     "diffusion component 3" = 3), align = "l", escape = F)
+```
+
+```{r kable17most2}
+most4_17 <- dc_top_table(dc4_17)
+most5_17 <- dc_top_table(dc5_17)
+most6_17 <- dc_top_table(dc6_17)
+kable(cbind(most4_17, most5_17, most6_17), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 4" = 3, "diffusion component 5" = 3,
+                     "diffusion component 6" = 3), align = "l", escape = F)
+```
+
+```{r kable17most3}
+most7_17 <- dc_top_table(dc7_17)
+most8_17 <- dc_top_table(dc8_17)
+most9_17 <- dc_top_table(dc9_17)
+kable(cbind(most7_17, most8_17, most9_17), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 7" = 3, "diffusion component 8" = 3,
+                     "diffusion component 9" = 3), align = "l", escape = F)
+```
+
+```{r kable17most4}
+most10_17 <- dc_top_table(dc10_17)
+kable(most10_17, "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 10" = 3), align = "l", escape = F)
+```
+
+```{r kable19most}
+most1_19 <- dc_top_table(dc1_19)
+most2_19 <- dc_top_table(dc2_19)
+most3_19 <- dc_top_table(dc3_19)
+kable(cbind(most1_19, most2_19, most3_19), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2019 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 1" = 3, "diffusion component 2" = 3, 
+                     "diffusion component 3" = 3), align = "l", escape = F)
+```
+
+```{r kable19most2}
+most4_19 <- dc_top_table(dc4_19)
+most5_19 <- dc_top_table(dc5_19)
+most6_19 <- dc_top_table(dc6_19)
+kable(cbind(most4_19, most5_19, most6_19), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2019 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 4" = 3, "diffusion component 5" = 3,
+                     "diffusion component 6" = 3), align = "l", escape = F)
+```
+
+```{r kable19most3}
+most7_19 <- dc_top_table(dc7_19)
+most8_19 <- dc_top_table(dc8_19)
+most9_19 <- dc_top_table(dc9_19)
+kable(cbind(most7_19, most8_19, most9_19), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2019 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 7" = 3, "diffusion component 8" = 3,
+                     "diffusion component 9" = 3), align = "l", escape = F)
+```
+
+```{r kable19most4}
+most10_19 <- dc_top_table(dc10_19)
+kable(most10_19, "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for 2019 vintage.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("diffusion component 10" = 3), align = "l", escape = F)
+```
+
+## Enrichment analysis for differentially expressed genes in the 2017 vintage
+
+```{r DC1viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 for the 2017 vintage. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
+dc_viz(dc1_17)
+```
+
+
+```{r DC2viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc2_17)
+```
+
+```{r DC3viz2017, fig.height = 3, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc3_17)
+```
+
+
+```{r DC4viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 4 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc4_17)
+```
+
+```{r DC5viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 5 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc5_17)
+```
+
+
+```{r DC6viz2017, fig.height = 3, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 6 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc6_17)
+```
+
+```{r DC7viz2017, eval = F, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 7 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc7_17)
+```
+
+```{r DC8viz2017, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 8 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc8_17)
+```
+
+```{r DC9viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 9 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc9_17)
+```
+
+```{r DC10viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 10 for the 2017 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc10_17)
+```
+
+## Enrichment analysis for differentially expressed genes in the 2019 vintage
+
+```{r DC1viz2019, fig.height = 9, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc1_19)
+```
+
+
+```{r DC2viz2019, fig.height = 9, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc2_19)
+```
+
+```{r DC3viz2019, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc3_19)
+```
+
+```{r DC4viz2019, fig.height = 6, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc4_19)
+```
+
+```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc5_19)
+```
+
+```{r DC6viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 6 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc6_19)
+```
+
+```{r DC7viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 7 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc7_19)
+```
+
+```{r DC8viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 8 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc8_19)
+```
+
+```{r DC9viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc9_19)
+```
+
+```{r DC10viz2019, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 10 for the 2019 vintage. See **Figure S1** for a description of the panels."}
+dc_viz(dc10_19)
+```
+
+
+```{r test, eval = F, include = F, eval = F}
+gene <- 'YPR065W' # ROX1
+gene <- 'YMR070W' # MOT3
+gene <- "YLR228C" # ECM22
+gene <- 'YDR213W' # UPC2
+gene <- 'YIR033W' # MGA2
+gene <- 'YGL055W' # OLE1
+gene <- 'YJR150C' # DAN1
+gene <- 'YDR044W' # HEM13
+Y <- dc_y$E[gene, ]
+dc$Y = Y
+ggplot(dc, aes(y = Y, x = DC2)) +
+  geom_point(color = "grey", alpha = .7) +
+  ggtitle(paste(gene, ", ", 
+                dc2_top %>% filter(ORF == gene) %>% dplyr::select(COMMON),
+                ": Log2FC = ", 
+                dc2_top %>% filter(ORF == gene) %>% dplyr::select(logFC) %>% mutate(logFC = round(logFC, digits = 3))))+
+  theme_minimal() +
+  labs(y = "normalized log expression value") +
+  #geom_text(x = -.05, y = 12.4, label=lm_eqn(dc, 'Y', 'DC2'), parse=T) +
+  geom_smooth(method='lm')
+
+```
+
+
+
+```{r, eval = F}
+tmp <- ggplot(dc17, aes(x = DC2, y = DC3, color = brix, label = ava_id)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  #scale_color_tableau(palette = "Tableau 20") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("2017") 
+ggplotly(tmp)
+tmp <- ggplot(dc17, aes(x = DC2, y = DC3, color = ava, label = brix)) +
+  geom_jitter() +
+  #scale_color_viridis_c() +
+  scale_color_tableau(palette = "Tableau 20") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("2017")
+tmp
+ggplotly(tmp)
+# DC1: brix
+# DC2: late ferm; brix
+# DC3: ?
+# DC4: ?
+# DC5: ?
+# DC7: ?
+
+p <- ggplot(dc19, aes(x = DC6, y = DC7, color = brix, label = ava_id)) +
+  geom_jitter() +
+  scale_color_viridis_c() +
+  #scale_color_tableau(palette = "Tableau 20") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  ggtitle("2019") 
+ggplotly(p)
+# DC1: brix
+# DC2: early fermentation differences
+# DC3: Wine from inoculum samples
+# DC4: early ferm
+# DC5: late ferm; brix
+# DC6: early ferm
+# DC7: early ferm
+
+```
