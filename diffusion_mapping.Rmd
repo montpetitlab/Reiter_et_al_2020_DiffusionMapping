@@ -157,7 +157,7 @@ dc_viz <- function(dc_con){
 
 # this plot only makes sense when there are > ~10 genes per component that are
 # differentially expressed
-dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "hr")){
+dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "hr"), show_genes = F){
   # dc <- dc19
   # dc_num <- "DC5"
   # dc_con <- dc5_19
@@ -232,9 +232,17 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
       select(Description, geneID) %>%
       mutate(enrichment = "GO CC")
   }
+  
   # COMBINE ENRICHMENT TABLES
-  down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) 
-  up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
+  if(show_genes == T){
+    down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) 
+    up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
+  } else if(show_genes == F) {
+    down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) %>%
+      select(-geneID)
+    up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top) %>%
+      select(-geneID)
+  }
   # make an annotation table
   up_tbl <- tableGrob(up_tbl, rows=NULL, theme = ttheme_minimal(base_size = 4, padding = unit(c(0.3, 0.3), "mm")))
   down_tbl <- tableGrob(down_tbl, rows=NULL, theme = ttheme_minimal(base_size = 4, padding = unit(c(0.3, 0.3), "mm")))
@@ -661,7 +669,7 @@ Given that the first diffusion component captures the dominant biological transi
 When colored by brix, the structure of the samples is sometimes apparent. 
 (Note samples at the origin of a diffusion component are neutral toward structure for that component.)
 For example, in the 2019 vintage, DC2, DC4, DC6, and DC7 capture differences in early fermenation, DC5 captures differences in late fermentation, and DC3 captures difference in the inoculum samples. 
-In the 2017 vintage, DC2, DC3, DC5, and DC6 capture variation in late-fermentation samples.
+In the 2017 vintage, DC2 captures variation in late-fermentation samples.
 While there is generaly a diminishing number of differentially expressed genes in higher components, there is still a significant difference in each of these components (**Table \@ref(tab:numdiffex)**).
 
 ```{r all_dc17_brix}
@@ -1244,59 +1252,7 @@ ggcorrplot(cor(dc_lfc_all), type = "upper", show.diag = F, lab = T,
   theme(legend.position = "bottom")
 ```
 
-## Differences among sites in the 2017 vintage
 
-Plotting diffusion components together can further reveal structure in the data. 
-In **Figure \@ref(fig:v2017DC2vsDC3)**, we see DC2 vs DC3 for the 2017 vintage. 
-Both components capture end of fermentation differences among samples. 
-In 2017, we sampled each fermentation starting 16 hours after inoculation and then every 24 hours (**Figure \@ref(fig:map)**), which likely corresponds to late growth phase and stationary phase of *S. cerevisiae*. 
-This sampling thereby captured nutrient limiting conditions of end of fermentation.
-
-```{r v2017DC2vsDC3, fig.height=3, fig.cap = "Diffusion components capture 2 and 3 late fermentation differences among primary fermentations from different sites in the 2017 vintage."}
-
-by_brix_23 <- ggplot(dc17, aes(x = DC2, y = DC3, color = brix, label = ava)) +
-  geom_point() +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-by_ava_23 <- ggplot(dc17, aes(x = DC2, y = DC3, color = ava, label = ava)) +
-  geom_point() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-by_brix_67 <- ggplot(dc17, aes(x = DC3, y = DC4, color = brix, label = ava)) +
-  geom_point() +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-by_ava_67 <- ggplot(dc17, aes(x = DC3, y = DC4, color = ava, label = brix)) +
-  geom_point() +
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
-  theme(plot.title = element_text(hjust = 0.5)) 
-ggarrange(by_brix_67, by_ava_67, ncol = 2, legend = "bottom", labels = c("A", "B"))
-ggarrange(by_brix_23, by_ava_23, ncol = 2, legend = "bottom", labels = c("A", "B"))
-```
-
-In DC2 vs DC3, we see two clusters form. 
-These clusters segragate along DC2. The first is composed of samples from vineyards *OR1*, *OR2*, and *SNC1* from end of fermentation, while the second is composed of samples from vineyards *RRV1*, *RRV3*, *AS1*, *AS2*, *SMV1*, *SMV2*, and *SRH1*. 
-The top induced genes along DC2 were *THI13*, *THI11*, and *THI4* (**Table \@ref(tab:kable17most1)**), while induced genes are enriched for pathways like fatty acid metabolism and steroid biosynthesis (**Figure \@ref(fig:DC2viz2017)**).
-Conversely, ribosome biogenesis and RNA degradation are enriched in repressed genes. 
-These pathways drive separation of mid and late fermentation samples. 
-
-Along DC3, the primary component along which the late fermentation cluster separates, induced genes are only enriched for phenylalanine metabolism. 
-However, repressed genes are enriched in many pathways, including methane metabolism, pentose-phosphate pathway, galactose metabolism, and steroid biosynthesis. 
-This suggests that these pathways are less expressed in the late fermenation cluster.
-
-Along DC7, samples from site *SNC1* again form an outlying cluster. 
-While repressed genes are not enriched in any pathways, induced genes are enriched for pathways like N-glycan biosynthesis, amino sugar & nucleotide sugar metabolism, and nicotinate & nicotinamide metabolism, again suggesting these pathways are less expressed in *SNC1* (**Figure \@ref(fig:DC7viz2017)**). 
-
-Along DC6 and DC7, early fermentation samples from sites *SMV1* and *SMV2* are shifted away from the origin, potentially indicating a different metabolic strategy used at the beginning of fermentation for these sites. 
 
 ## Differences among sites in 2019 vintage
 
@@ -1499,21 +1455,8 @@ dc_top_diffex_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava
 
 dc_top_diffex_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix")
 dc_top_diffex_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC3", dc_con = dc3_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC4", dc_con = dc4_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC5", dc_con = dc5_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC6", dc_con = dc6_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC7", dc_con = dc7_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC8", dc_con = dc8_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC9", dc_con = dc9_17, color_by = "ava")
-dc_top_diffex_plot(dc = dc17, dc_num = "DC10", dc_con = dc10_17, color_by = "ava")
 
 
-# dc_top_enrich_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "brix")
-# dc_top_enrich_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "brix")
-# dc_top_enrich_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava")
-# dc_top_enrich_plot(dc = dc17, dc_num = "DC7", dc_con = dc7_17, color_by = "ava")
-# dc_top_enrich_plot(dc = dc17, dc_num = "DC9", dc_con = dc9_17, color_by = "ava")
 ```
 
 ## Tables of top differentially expressed genes
@@ -1521,43 +1464,13 @@ dc_top_diffex_plot(dc = dc17, dc_num = "DC10", dc_con = dc10_17, color_by = "ava
 ```{r kable17most1}
 most1_17 <- dc_top_table(dc1_17)
 most2_17 <- dc_top_table(dc2_17)
-most3_17 <- dc_top_table(dc3_17)
-kable(cbind(most1_17, most2_17, most3_17), "latex", booktabs = T,
+kable(cbind(most1_17, most2_17), "latex", booktabs = T,
       caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
   kable_styling(font_size = 9) %>%
-  add_header_above(c("diffusion component 1" = 3, "diffusion component 2" = 3,
-                     "diffusion component 3" = 3), align = "l", escape = F)
+  add_header_above(c("diffusion component 1" = 3, "diffusion component 2" = 3), 
+                   align = "l", escape = F)
 ```
 
-```{r kable17most2}
-most4_17 <- dc_top_table(dc4_17)
-most5_17 <- dc_top_table(dc5_17)
-most6_17 <- dc_top_table(dc6_17)
-kable(cbind(most4_17, most5_17, most6_17), "latex", booktabs = T,
-      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
-  kable_styling(font_size = 9) %>%
-  add_header_above(c("diffusion component 4" = 3, "diffusion component 5" = 3,
-                     "diffusion component 6" = 3), align = "l", escape = F)
-```
-
-```{r kable17most3}
-most7_17 <- dc_top_table(dc7_17)
-most8_17 <- dc_top_table(dc8_17)
-most9_17 <- dc_top_table(dc9_17)
-kable(cbind(most7_17, most8_17, most9_17), "latex", booktabs = T,
-      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
-  kable_styling(font_size = 9) %>%
-  add_header_above(c("diffusion component 7" = 3, "diffusion component 8" = 3,
-                     "diffusion component 9" = 3), align = "l", escape = F)
-```
-
-```{r kable17most4}
-most10_17 <- dc_top_table(dc10_17)
-kable(most10_17, "latex", booktabs = T,
-      caption = 'Top 15 induced and repressed genes for 2017 vintage.') %>%
-  kable_styling(font_size = 9) %>%
-  add_header_above(c("diffusion component 10" = 3), align = "l", escape = F)
-```
 
 ```{r kable19most}
 most1_19 <- dc_top_table(dc1_19)
@@ -1602,90 +1515,55 @@ kable(most10_19, "latex", booktabs = T,
 
 ## Enrichment analysis for differentially expressed genes in the 2017 vintage
 
-```{r DC1viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 for the 2017 vintage. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
-dc_viz(dc1_17)
+```{r DC1viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix", show_genes = F)
 ```
 
-
-```{r DC2viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc2_17)
-```
-
-```{r DC3viz2017, fig.height = 3, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc3_17)
-```
-
-
-```{r DC4viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 4 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc4_17)
-```
-
-```{r DC5viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 5 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc5_17)
-```
-
-
-```{r DC6viz2017, fig.height = 3, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 6 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc6_17)
-```
-
-```{r DC7viz2017, eval = F, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 7 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc7_17)
-```
-
-```{r DC8viz2017, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 8 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc8_17)
-```
-
-```{r DC9viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 9 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc9_17)
-```
-
-```{r DC10viz2017, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 10 for the 2017 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc10_17)
+```{r DC2viz2017, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "brix", show_genes = F)
 ```
 
 ## Enrichment analysis for differentially expressed genes in the 2019 vintage
 
-```{r DC1viz2019, fig.height = 9, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc1_19)
+```{r DC1viz2019, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC1", dc_con = dc1_19, color_by = "brix", show_genes = F)
 ```
 
 
-```{r DC2viz2019, fig.height = 9, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc2_19)
+```{r DC2viz2019, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr", show_genes = F)
 ```
 
-```{r DC3viz2019, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc3_19)
+```{r DC3viz2019, fig.height = 4, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr", show_genes = T)
 ```
 
-```{r DC4viz2019, fig.height = 6, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc4_19)
+```{r DC4viz2019, fig.height = 6, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr", show_genes = T)
 ```
 
-```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc5_19)
+```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "hr", show_genes = T)
 ```
 
-```{r DC6viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 6 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc6_19)
+```{r DC6viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 6 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, color_by = "ava", show_genes = T)
 ```
 
-```{r DC7viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 7 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc7_19)
+```{r DC7viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 7 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava", show_genes = T)
 ```
 
-```{r DC8viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 8 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc8_19)
+```{r DC8viz2019, fig.height = 2.5, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 8 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava", show_genes = T)
 ```
 
-```{r DC9viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc9_19)
+```{r DC9viz2019, eval = F, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_by = "ava", show_genes = T)
 ```
 
-```{r DC10viz2019, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 10 for the 2019 vintage. See **Figure S1** for a description of the panels."}
-dc_viz(dc10_19)
+```{r DC10viz2019, fig.height = 4, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava", show_genes = T)
 ```
 
 
