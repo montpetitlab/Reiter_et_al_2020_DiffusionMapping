@@ -5,6 +5,7 @@ author:
 - Taylor Reiter
 - Rachel Montpetit
 - ...
+- C. Titus Brown?
 - Ron Runnebaum
 - Ben Montpetit
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -578,19 +579,22 @@ DRAW BACK TO THESE METHODS AND WHY THEY WONT WORK.
 <!-- clust, masigpro, metacycle, timesvector -->
 Given that we aimed to identify the commonalities and differences in gene expression across fermentations, we sought an analysis approach that did not rely on synchronicity between samples. 
 
-In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome programs used by *S. cerevisiae* to accomplish Pinot noir fermentation (CITE BRIX PAPER).
-Given the success of this method, we sought 
+In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
+Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation.
+Unlike brix measurements, latent variables are not observed but are inferred from relationships in the sequencing data.
+We extract these latent variables using diffusion mapping, a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
+We refer to these latent variables as *diffusion components*, and to scatter plots of diffusion components as *diffusion maps*.
+While diffusion mapping extracts latent variables, differential expression provides interpretation for the drivers of separation among samples and fermentations.
 
 
-Diffusion mapping is a manifold learning technique that uses information from the *k* most similar samples when constructing relationships among samples [@coifman2005geometric; @coifman2006diffusion]. 
-It is a non-linear dimensionality reduction technique that generates latent variables that capture diminishing variation between samples.
-We refer to these latent variables as diffusion components, and to scatter plots of diffusion components as diffusion maps. 
+<!-- As model organism, the genes and pathways of *S. cerevisiae* are well annotated  -->
+<!-- While diffusion mapping is  -->
 
-While traditional differential expression works well for categorical comparisons or synchronous time-series, this dataset was challenging to analyze because it was asynchronous.
-While samples were taken at the same time, brix, or sugar concentration, was asynchronous among fermentations. 
-This is caused when fermentations progress at different speeds. 
-To enable us to perform differential expression with these samples, we used diffusion components as latent variables and perform continuous differential expression (linear regression) using the limma R package. 
-While each diffusion component captures latent structure within the dataset, lower diffusion components capture the most structure.
+
+<!-- Dimensionality reduction algorithms like principal component analysis are commonly applied to sequencing data to identify sources of variation therein, although many algorithms can be used for this purpose [@way2020compressing]. -->
+
+
+
 
 ## Diffusion component 1 captures change in brix
 
