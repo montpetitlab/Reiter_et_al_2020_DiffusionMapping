@@ -61,6 +61,7 @@ set.seed(1)
 ```
 
 ```{r diffusion_mapping_functions}
+## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
 ## standardize columns func
 norm.mat <- function(mat){
   ms <- apply(mat, 2, function(col) (col - mean(col)) / sd(col))
@@ -577,6 +578,8 @@ m17 <- sweep(counts17, 2, colSums(counts17), `/`)
 m17 <- t(m17)
 
 ## build diffusion map
+## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
+
 nm <- m17 %>% norm.mat()          # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
@@ -627,6 +630,8 @@ m19 <- sweep(counts19, 2, colSums(counts19), `/`)
 m19 <- t(m19)                                             # transpose counts
 
 ## build diffusion map
+## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
+
 nm <- m19 %>% norm.mat()        # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
