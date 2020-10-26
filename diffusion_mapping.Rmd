@@ -5,7 +5,7 @@ author:
 - Taylor Reiter
 - Rachel Montpetit
 - ...
-- C. Titus Brown?
+- C. Titus Brown--(do you want to be on the paper?)
 - Ron Runnebaum
 - Ben Montpetit
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -366,7 +366,7 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
     dplyr::select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
   
   if(color_by == "brix"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix, label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix)) +
       geom_jitter() +
       scale_color_viridis_c() +      
       labs(x = dc_num) +
@@ -376,7 +376,7 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
             axis.title.y = element_blank(),
             legend.position = "bottom") 
   } else if(color_by == "ava") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava, label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
       geom_jitter() +
       theme_minimal() +
       labs(x = dc_num) +
@@ -387,8 +387,7 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
       scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
                                     "AS" = as, "SMV" = smv, "SRH" = srh)) 
   } else if(color_by == "hr"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), 
-                             label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")))) +
       geom_point() +
       scale_color_brewer(palette = "Paired", name = "hour") + 
       geom_jitter() +
@@ -450,7 +449,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
     dplyr::select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
   
   if(color_by == "brix"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix, label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix)) +
       geom_jitter() +
       scale_color_viridis_c() +
       labs(x = dc_num) +
@@ -460,7 +459,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
             axis.title.y = element_blank(),
             legend.position = "bottom") 
   } else if(color_by == "ava") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava, label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
       geom_jitter() +
       theme_minimal() +
       labs(x = dc_num) +
@@ -471,8 +470,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
       scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
                                     "AS" = as, "SMV" = smv, "SRH" = srh)) 
   } else if(color_by == "hr"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), 
-                             label = ava_id)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")))) +
       geom_point() +
       scale_color_brewer(palette = "Paired", name = "hour") + 
       geom_jitter() +
@@ -542,53 +540,41 @@ While some biological processes occur in steady state, many are dynamic and requ
 In particular, environmental conditions that elicit a global shift in gene expression (e.g. onset of hypoxia) require time series sampling to capture the continuous metabolic remodelling that occurs.
 Time series gene expression surveys have been successfully applied to these types of problems (CITE: first hypoxia paper, first wine paper). 
 However, in these experiments, a single conditions was assayed to understand the ubiquitous global shifts in gene expression. 
-Expanding such inquiries to multiple groups raises problems with data analysis procedures.
+Expanding such inquiries to multiple groups raises data analysis problems.
 
-First, samples become asynchronous.
 Time series profiles of cell populations rely on synchronicity between cells to identify coordinated shifts in gene expression.
-However, when expanding scientific inquiry to groups of cell populations to determine differences between groups, synchronicity is difficult to maintain across groups.
+However, synchronicity is difficult to maintain across groups of cell populations exposed to different treatments.
 Experimental techniques have been developed to resynchronize groups of cells, for example by arresting the cell cylce in the same phase across groups (CITE).
 However these experimental approaches are not appropriate across broad experimental designs and may not be completely effective at re-synchronization (CITE). 
 
-An additional challenge is the identification of differences between groups that are separate from or in excess of the dominant and ubiquitous global shift in gene expression.
+An additional challenge is the identification of differences between groups that are separate from or in excess to the dominant and ubiquitous global shift in gene expression.
+Structure in gene expression exists at different scales (CITE PHATE), but dominant shifts experienced by all groups may overpower weaker but biologically important signals.
+In experimental designs where groups undergo the same primary shift in metabolism but also react in subtly different ways, it's important to isolate and understand the transcriptomic context of those differences.
+<!-- Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts.  -->
 
+These computational problems have been addressed in part in by single cell RNA-sequencing analysis of differentiating cells.
+As cells differentiate during development, absolute time may not reflect the extent of differentiation in an individual cell. 
+Pseudotime analysis reorders asynchronous cells from absolute time to stage in differentiation relative to other cells undergoing the same process.
+In particular, diffusion maps have been used to reorder asynchronously shifted cells because they preserve relationships between samples [@destiny2015].
 
+Diffusion mapping is a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
+Dimensionality reduction algorithms like principal component analysis and t-distributed stochastic neighbor embedding (tSNE) are commonly applied to sequencing data to identify sources of variation therein [@way2020compressing] (CITE PHATE).
+Diffusion mapping has strengths over these methods because it is non-linear and robust to the "horseshoe effect" (unlike PCA) [diaconis2008horseshoes], preserves distances between samples (unlike tSNE), and is insensitive to sampling density.
 
+As a dimensionality reduction algorithm, diffusion maps extract latent variables that represent composite sources of variation between samples. 
+Latent variables are unmeasured but are inferred from relationships in the sequencing data. 
+Diffusion maps *per se* provides no suggestion of the underlying genes that lead to separation of samples along latent variables.
 
+Here, we use diffusion maps to analyze bulk time-series RNA-sequencing of global shifts of *Saccharomyces cerevisiae* metabolism during wine fermentation from different vineyard sites and hypoxia of mutants.
+We use diffusion maps to resynchronize gene expression across treatment groups and to extract latent variables that represent the dominant sources of structure in the data sets.
+We refer to these latent variables as *diffusion components*.
+Then, we apply differential expression along each diffusion component to determine the genes responsible for separation among samples.
+We find that the primary diffussion component represents the dominant global shift in gene expression experienced by the majority of groups, while subsequent diffusion components represent subtler differences between groups. 
 
-Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts. 
-
-These computational problems have been addressed in part in the single cell RNA-sequencing literature. 
-When a population of cells undergoes a global shift in gene expression, concepts like pseudotime separate cells out along their trajectory of gene expression changes. 
-
-<!-- These studies -- one of which captured the response of an external perturbation while the other captured the yeast cell cycle -- relied on synchronicity between the cells that were profiled to understand uniform transcriptional response performed by the cell population at hand.  -->
 <!-- However, these approaches are not effective when comparing separate cell populations as response rates to stimuli may vary between populations leading to asynchronization in gene expression with respect to time (reveiwed in XXX Bar-Joseph 2012). -->
-<!-- Various approaches for data alignment have been developed that principally rely on time-wrapping (CITE) or hidden Markov models (CITE). -->
-<!-- DRAW BACK TO THESE METHODS AND WHY THEY WONT WORK. -->
-<!-- clust, masigpro, metacycle, timesvector -->
-<!-- Given that we aimed to identify the commonalities and differences in gene expression across fermentations, we sought an analysis approach that did not rely on synchronicity between samples. -->
 
-In many RNA-sequencing experiments, capturing gene expression when there are few differences between groups allows researchers to identify the 
-
-In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
-Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation.
-Unlike brix measurements, latent variables are not observed but are inferred from relationships in the sequencing data.
-Dimensionality reduction algorithms like principal component analysis are commonly applied to sequencing data to identify sources of variation therein, although many algorithms can be used for this purpose [@way2020compressing].
-
-We extract these latent variables using diffusion mapping, a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
-Diffusion mapping is a common visualization technique in single cell RNA-sequencing, where the transcriptome of each cell represents a discrete point during cellular development or differentiation [@destiny2015].
-We refer to these latent variables as *diffusion components*, and to scatter plots of diffusion components as *diffusion maps*.
-Diffusion mapping extracts latent variables while differential expression provides interpretation for the drivers of separation among samples and fermentations.
-
-Here, we explore the application of diffusion mapping to two time-series RNA-sequencing data sets that profile *S. cerevisiae* populations as they undergo global shifts in gene expression.
-In the first, WINE
-In the second, HYPOXIA
-In this study, we aimed to understand how vineyard site impacts primary fermentation of Pinot noir wine.
-We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon (**Figure \@ref(fig:map)**). We profiled each fermentation using time-course RNA sequencing and used *Saccharomyces cerevisiae* gene expression as an indicator of similarities and difference across fermentation. We find...
-
-```{r map, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
-include_graphics("figures/map_and_sampling.pdf") 
-```
+<!-- Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation. -->
+<!-- Unlike brix measurements, latent variables-->
 
 # Results
 
@@ -742,7 +728,20 @@ dc10_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 11) # Test "DC10" coefficient
 ## Diffusion mapping captures the dominant biological transition of primary fermentation
 
 During fermentation, *S. cerevisiae* encounters overlapping stresses as acid and osmotic stress in early fermentation give way to nutrient limitation and high ethanol concentration.
-As the concentration of sugar drops during fermentation, 
+This dynamic environment leads to transcriptome remodelling throughout fermentation that allows *S. cerevisiae* to survive and dominant the transformation of grape must into wine [@rossignol2003genome; @marks2008dynamics] (CITE BRIX PAPER).
+While *S. cerevsisiae* gene expression during fermentation is consistent across diverse fermentations conditions (CITE BRIX PAPER), the chemical composition of grape must and wine is variable however wines from the same vineyard site often have similar outcomes across multiple years (e.g. vintages) [@cantu2020investigating] (CITE).
+This phenomenon is referred to as *terroir* -- the environmental and anthropomorphic factors contribute to the outcome of wine. 
+We sought to uncover the quantifiable contribution of vineyard site to wine outcomes by using *S. cerevisiae* gene expression as a biosensor of differences between fermentations.
+*S. cerevisiae* is one of the most well studied and annotated model organisms and so we took advantage of that information to uncover differences between fermentations from different vineyards.
+We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon (**Figure \@ref(fig:map)**). 
+We profiled each fermentation using time-course RNA sequencing and used *S. cerevisiae* gene expression as an indicator of similarities and difference across fermentation.
+
+```{r map, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
+include_graphics("figures/map_and_sampling.pdf") 
+```
+
+In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
+
 Diffusion component 1 captures the dominant structure between samples. 
 In **Figure \@ref(fig:dc1)**, points are plotted along diffusion component 1, but ordered by brix. 
 To test whether latent variables generated by diffusion mapping capture biologically-relevant structure of *S. cerevisiae* gene expression during wine fermentation, we performed differential expression using the continuous variable brix and the values of diffusion component 1. 
@@ -1451,33 +1450,33 @@ Diffusion component 2 separates 2 hour from 16 hours samples, indicating that th
 
 
 ```{r v2019dc2dc3, fig.height = 3, fig.cap = "Diffusion component 2 and diffusion component 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples for three clusters."}
-by_hour <- ggplot(dc19, aes(x = DC1, y = DC2, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
-  geom_point(alpha = .8) +
+by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+  geom_point(alpha = .5, size = 2) +
   scale_color_brewer(palette = "Paired", name = "hour") + 
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
 by_ava <- ggplot(dc19, aes(x = DC2, y = DC3, color = ava, label = hr)) +
-  geom_point(alpha = .8) +
+  geom_point(alpha = .5, size = 2) +
   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
                                 "AS" = as, "SMV" = smv, "SRH" = srh)) + 
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
-by_hour_67 <- ggplot(dc19, aes(x = DC4, y = DC10, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
-  geom_point(alpha = .8) +
-  scale_color_brewer(palette = "Paired", name = "hour") + 
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-by_ava_67 <- ggplot(dc19, aes(x = DC4, y = DC10, color = ava, label = ava)) +
-  geom_point() +
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) + 
-  theme(plot.title = element_text(hjust = 0.5)) 
-
-#ggarrange(by_hour_67, by_ava_67, ncol = 2, legend = "bottom", labels = c("A", "B"))
+# by_hour_67 <- ggplot(dc19, aes(x = DC6, y = DC8, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+#   geom_point(alpha = .8) +
+#   scale_color_brewer(palette = "Paired", name = "hour") + 
+#   theme_minimal() +
+#   theme(plot.title = element_text(hjust = 0.5)) 
+# 
+# by_ava_67 <- ggplot(dc19, aes(x = DC6, y = DC8, color = ava, label = ava)) +
+#   geom_point() +
+#   theme_minimal() +
+#   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+#                                 "AS" = as, "SMV" = smv, "SRH" = srh)) + 
+#   theme(plot.title = element_text(hjust = 0.5)) 
+# 
+# ggarrange(by_hour_67, by_ava_67, ncol = 2, legend = "bottom", labels = c("A", "B"))
 
 ggarrange(by_hour, by_ava, ncol = 2, legend = "bottom", labels = c("A", "B"))
 ```
@@ -1504,14 +1503,14 @@ While samples largely separate by brix, with dry fermentations segregating to on
 Induced genes in dry samples are enriched for protein processing in the ER, and repressed genes are enriched for pathways like ribosomes, carbon metabolism, purine metabolism, and fatty acid metabolism (**Figure S12**)
 
 
-```{r v2019dc8dc10, fig.height = 3, fig.cap = "Diffusion component 8 and diffusion component 10 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples, especially those from regions AS, AV, and SNC, form distinct clusters."}
-by_hour <- ggplot(dc19, aes(x = DC8, y = DC10, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+```{r v2019dc4dc6, fig.height = 3, fig.cap = "Diffusion component 8 and diffusion component 10 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples, especially those from regions AS, AV, and SNC, form distinct clusters."}
+by_hour <- ggplot(dc19, aes(x = DC4, y = DC6, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
   geom_point() +
   scale_color_brewer(palette = "Paired", name = "hour") + 
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5)) 
 
-by_ava <- ggplot(dc19, aes(x = DC8, y = DC10, color = ava, label = ava_id)) +
+by_ava <- ggplot(dc19, aes(x = DC4, y = DC6, color = ava, label = ava_id)) +
   geom_point() +
   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
                                   "AS" = as, "SMV" = smv, "SRH" = srh)) + 
@@ -1526,6 +1525,255 @@ ggarrange(by_hour, by_ava, ncol = 2, legend = "bottom", labels = c("A", "B"))
 OR
 
 ## Diffusion mapping reveals a coordinated response to hypoxia
+```{r hypoxia_functions}
+dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "deletion"), show_genes = F){
+  # dc <- dc19
+  # dc_num <- "DC3"
+  # dc_con <- dc3_19
+  # separate to induced and repressed -- note that filtering for 
+  # log2fc is done in dc_contrast() when normalize_logFC = T. 
+  # default is a normalizes logFC > abs(2) 
+  # therefore, up down separates the positive and negative logFC values
+  
+  up <- dc_con[dc_con$logFC > 0, ]
+  down <- dc_con[dc_con$logFC < 0, ] 
+               
+  # KEGG enrichment
+  if(nrow(up) != 0){
+    ekegg_up <- enrichKEGG(up$ORF, "sce", pAdjustMethod = "bonferroni") 
+    ekegg_up_top <- ekegg_up@result %>%
+      filter(p.adjust < 0.05) %>%
+      dplyr::select(Description, geneID) %>%
+      mutate(enrichment = "KEGG") 
+  } else {
+    ekegg_up_top <- data.frame("Description" = character(),
+                               "geneID" = character(),
+                               "enrichment" = character())
+  }
+  
+  if(nrow(down) != 0){
+    if(!identical(down$ORF, down$COMMON)) { # Filter out datasets where everything is unknown
+      ekegg_down <- enrichKEGG(down$ORF, "sce", pAdjustMethod = "bonferroni")
+      ekegg_down_top <- ekegg_down@result %>%
+        filter(p.adjust < 0.05) %>%
+        dplyr::select(Description, geneID) %>%
+        mutate(enrichment = "KEGG")
+    } else {
+      ekegg_down_top <- data.frame("Description" = character(),
+                                   "geneID" = character(),
+                                   "enrichment" = character())
+    }
+  } else {
+    ekegg_down_top <- data.frame("Description" = character(),
+                                 "geneID" = character(),
+                                 "enrichment" = character())
+  }
+  
+  # GO enrichment
+  if(nrow(up) != 0){
+    ego_bp_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "BP", pAdjustMethod = "bonferroni")
+    ego_bp_up_top <- ego_bp_up@result %>%
+      filter(p.adjust < 0.05) %>%
+      dplyr::select(Description, geneID) %>%
+      mutate(enrichment = "GO BP")
+    
+    ego_mf_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "MF", pAdjustMethod = "bonferroni")
+    ego_mf_up_top <- ego_mf_up@result%>%
+      filter(p.adjust < 0.05) %>%
+      dplyr::select(Description, geneID) %>%
+      mutate(enrichment = "GO MF")
+    
+    ego_cc_up <- enrichGO(up$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                          ont = "CC", pAdjustMethod = "bonferroni")
+    ego_cc_up_top <- ego_cc_up@result %>%
+      filter(p.adjust < 0.05) %>%
+      dplyr::select(Description, geneID) %>%
+      mutate(enrichment = "GO CC")
+  } else {
+    ego_cc_up_top <- ego_mf_up_top <- ego_bp_up_top <- data.frame("Description" = character(),
+                                                                  "geneID" = character(),
+                                                                  "enrichment" = character())
+  }
+  
+  if(nrow(down) != 0){
+    if(!identical(down$ORF, down$COMMON)) { # Filter out datasets where everything is unknown
+      ego_bp_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                              ont = "BP", pAdjustMethod = "bonferroni")
+      ego_bp_down_top <- ego_bp_down@result %>%
+        filter(p.adjust < 0.05) %>%
+        dplyr::select(Description, geneID) %>%
+        mutate(enrichment = "GO BP")
+      
+      ego_mf_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                              ont = "MF", pAdjustMethod = "bonferroni")
+      ego_mf_down_top <- ego_mf_down@result %>%
+        filter(p.adjust < 0.05) %>%
+        dplyr::select(Description, geneID) %>%
+        mutate(enrichment = "GO MF")
+      
+      ego_cc_down <- enrichGO(down$COMMON, OrgDb = org.Sc.sgd.db, keyType = "GENENAME", 
+                              ont = "CC", pAdjustMethod = "bonferroni")
+      if(class(ego_cc_down) == "NULL") {
+        message("No enriched GO CC Down, moving on!")
+        # make empty df so obj is rbind compliant
+        ego_cc_down_top <- data.frame("Description" = character(), 
+                                      geneID = character(), 
+                                      enrichment = character())
+      } else {
+        ego_cc_down_top <- ego_cc_down@result %>%
+          filter(p.adjust < 0.05) %>%
+          dplyr::select(Description, geneID) %>%
+          mutate(enrichment = "GO CC")
+      } 
+    } else {
+      ego_cc_down_top <- ego_mf_down_top <- ego_bp_down_top <- data.frame("Description" = character(),
+                                                                          "geneID" = character(),
+                                                                          "enrichment" = character())
+    }
+  }  else {
+    ego_cc_down_top <- ego_mf_down_top <- ego_bp_down_top <- data.frame("Description" = character(),
+                                                                        "geneID" = character(),
+                                                                        "enrichment" = character())
+  }
+  
+  # COMBINE ENRICHMENT TABLES
+  if(show_genes == T){
+    down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) 
+    up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
+  } else if(show_genes == F) {
+    down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) %>%
+      dplyr::select(-geneID)
+    up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top) %>%
+      dplyr::select(-geneID)
+  }
+
+
+  # PRUNE PATHWAY NAMES TO FIRST X WORDS
+  up_tbl$Description <- gsub(" \\(.*\\)", "", up_tbl$Description)
+  up_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", up_tbl$Description)
+  down_tbl$Description <- gsub(" \\(.*\\)", "", down_tbl$Description)
+  down_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", down_tbl$Description)
+  
+  # PLOT ANNOTATION TABLES
+  if(nrow(up_tbl) == 0){
+    # make an empty table if there are no results
+    up_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 5, base_style = "blank", padding = unit(c(.5, .5), "mm")))
+  } else {
+    up_tbl <- ggtexttable(up_tbl,rows = NULL, theme = ttheme(base_size = 5, base_style = "blank", padding = unit(c(.5, .5), "mm")))
+  }
+  
+  if(nrow(down_tbl) == 0){
+    # make an empty table if there are no results
+    down_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 5, base_style = "blank", padding = unit(c(.5, .5), "mm")))
+  } else {
+    down_tbl <- ggtexttable(down_tbl,rows = NULL, theme = ttheme(base_size = 5, base_style = "blank", padding = unit(c(.5, .5), "mm")))
+  }
+  
+  # PLOT DC
+  # prep DF for plotting. Rename DC* to DC so that the same innvocation can be used
+  # for ggplot across all plots
+  dc <- dc %>%
+    dplyr::select(DC = all_of(dc_num), sample, time, deletion)
+  
+  if(color_by == "time"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
+      geom_jitter() +
+      scale_color_viridis_c(trans = 'reverse') +      
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") 
+  } else if(color_by == "deletion") {
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = deletion)) +
+      geom_jitter() +
+      theme_minimal() +
+      labs(x = dc_num) +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom")
+    }
+
+  # Plot chart and table into one object
+  return(ggarrange(down_tbl, plt_dc, up_tbl, ncol = 3))
+}
+
+dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "deletion")){
+  # dc <- dc19
+  # dc_num <- "DC7"
+  # dc_con <- dc7_19
+  # color_by = "ava"
+  # separate to induced and repressed -- note that filtering for 
+  # log2fc is done in dc_contrast() when normalize_logFC = T. 
+  # default is a normalizes logFC > abs(2) 
+  # therefore, up down separates the positive and negative logFC values
+  
+  up_most <- dc_con %>%
+    filter(logFC_adj > 0) %>%
+    dplyr::select(COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>%
+    dplyr::select(-logFC_adj) %>%
+    head(n = 10)
+  
+  down_most <- dc_con %>%
+    filter(logFC_adj < 0) %>%
+    dplyr::select(COMMON, logFC_adj) %>%
+    mutate(logFC = round(logFC_adj, digits = 1)) %>% 
+    dplyr::select(-logFC_adj) %>%
+    head(n = 10)
+  
+  # COMBINE ENRICHMENT TABLES
+  # make an annotation table
+  
+  if(nrow(up_most) == 0){
+    # make an empty table if there are no results
+    up_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+  } else{
+    up_tbl <- ggtexttable(up_most, rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+  }
+  if(nrow(down_most) == 0){
+    # make an empty table if there are no results
+    down_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+  } else {
+    down_tbl <- ggtexttable(down_most,rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+  }
+  # PLOT DC
+  # prep DF for plotting. Rename DC* to DC so that the same innvocation can be used
+  # for ggplot across all plots
+  dc <- dc %>%
+    dplyr::select(DC = all_of(dc_num), time, deletion, sample)
+  
+  if(color_by == "time"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
+      geom_jitter() +
+      scale_color_viridis_c(trans = 'reverse') +
+      labs(x = dc_num) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") 
+  } else if(color_by == "deletion") {
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
+      geom_jitter() +
+      theme_minimal() +
+      labs(x = dc_num) +
+      theme(plot.title = element_text(hjust = 0.5),
+            axis.text.y = element_blank(),
+            axis.title.y = element_blank(),
+            legend.position = "bottom") 
+  } else {
+      message("Please try a legitimate color values, either brix, ava, or hr")
+    }
+
+  # Plot chart and table into one object
+  return(ggarrange(down_tbl, plt_dc, up_tbl, ncol = 3))
+}
+```
 
 ```{r diffusion_mapping_hypoxia}
 ## preprocessing
@@ -1615,17 +1863,16 @@ However, it is possible that peak 30min hypoxic response was not observed in all
 
 
 ```{r DMhypoxia, fig.cap="Diffusion map of wildtype and 22 mutant strains exposed to 100% nitrogen for 0-240 min. Wildtype cells are crosses, while all mutants appear as points."}
-dc_hyp$time <- as.factor(dc_hyp$time)
+#dc_hyp$time <- as.factor(dc_hyp$time)
 scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC1, y = DC2, color = time, label = deletion)) +
-  geom_point() +
-  scale_color_viridis_d(option = "plasma") +
+  geom_point(size = 2) +
+  scale_color_viridis_c(trans = 'reverse') +
   theme_minimal() +
-  theme(plot.title.position = "plot") +
-  ggtitle("GSE115171 & GSE85595") 
+  theme(plot.title.position = "plot") 
 
 # add WT
 scat1 + 
-  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = DC2), shape = 3)
+  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = DC2), shape = 3, size = 2)
 ```
 
 
@@ -1645,8 +1892,9 @@ dc2_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 3)
 
 
 ```{r DC1_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
-dc_viz(dc1_hyp)
-#dc_top_diffex_plot(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "hr")
+
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
 ```
 
 DC1 separates a peak hypoxic response that is dominated by samples at t = 30min of nitrogen exposure. 
@@ -1676,11 +1924,12 @@ dc1_hyp_down <- dc1_hyp %>%
 
 ```{r DC2_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
 
-dc_viz(dc2_hyp)
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
 ```
 
 
-```{r most_dc_hyp2, include = T}
+```{r most_dc_hyp2}
 most2 <- dc_top_table(dc2_hyp)
 
 dc2_hyp_up <- dc2_hyp %>%
@@ -1689,7 +1938,7 @@ dc2_hyp_down <- dc2_hyp %>%
   filter(logFC_adj < 0)
 ```
 
-```{r kable_most}
+```{r kable_most, eval = F}
 kable(cbind(most1, most2), "latex", booktabs = T,
       caption = 'Top 15 induced and repressed genes for diffusion components 1 and 2.') %>%
   kable_styling(font_size = 9) %>%
