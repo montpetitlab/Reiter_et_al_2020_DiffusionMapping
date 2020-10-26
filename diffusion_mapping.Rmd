@@ -1490,6 +1490,7 @@ OR
 ## Diffusion mapping reveals a coordinated response to hypoxia
 
 ```{r diffusion_mapping_hypoxia}
+## preprocessing
 hypoxia_info <- read_csv("hypoxia/hypoxia_info.csv")
 files <- list.files("hypoxia/GSE115171_RAW", pattern = ".txt.gz$", recursive = T, full.names = T)
 files <- c(files, list.files("hypoxia/GSE85595_RAW", pattern = "tab.gz", recursive = T, full.names = T))
@@ -1509,12 +1510,36 @@ m <- sweep(m, 2, colSums(m), `/`)
 m <- m[grepl("^Y", rownames(m)), ]                    # subset to mRNA
 m <- t(m)                                             # transpose counts
 
-# build diffusion map
-dm_hyp <- DiffusionMap(m, k = 41, n_eigs = 334)
+## Build diffusion map
+nm <- m %>% norm.mat()        # normalize
+aff <- nm %>%
+  get_euc(., n.threads = 1) %>% 
+  threshold(., top_k = 10)      # make affinity matrix
+Lij <- aff %>% get_laplac()     # compute laplacian
+eig <- eigen(Lij)               # smallest keig vectors
+evl <- eig$values %>%           # get eigenvalues
+  Re() %>%
+  round(., digits = 10)
+evc <- eig$vectors %>%          # get eigenvectors
+  Re() %>%
+  round(., digits = 10)
 
-# create a df with each DC that occurs after a large jump and record metadata
-dc_hyp <- data.frame(DC1 = dm_hyp$DC1, DC2 = dm_hyp$DC2, DC3 = dm_hyp$DC3, 
-                     DC4 = dm_hyp$DC4, DC5 = dm_hyp$DC5, DC7 = dm_hyp$DC7) %>%
+# create objects containing diffusion components
+for(d in 1:length(evl)){
+  assign(paste('dim', d, sep = '_'),
+         Re(evc[, rank(evl) == (d + 1)])
+  )
+}
+
+k_eig <- 10                     # specify num of variables you want to keep
+dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
+  t() %>%
+  as.data.frame()               # merge in array
+
+colnames(dat) <- paste(paste('DC', 1:(k_eig), sep = ''))
+rownames(dat) <- rownames(Lij)  # add labels
+
+dc_hyp <- dat %>%               # join with metadata
   rownames_to_column("sample") %>%
   mutate(sample = gsub("GSM......._", "", sample)) %>%
   left_join(hypoxia_info, by = "sample")
