@@ -9,7 +9,7 @@ author:
 - Ron Runnebaum
 - Ben Montpetit
 date: "`r format(Sys.time(), '%d %B, %Y')`"
-bibliography: ../bibliography.bib
+bibliography: ../2020-pn-tmp/bibliography.bib
 graphics: yes
 figsintext: yes
 geometry: "left=1in,right=1in,top=1in,bottom=1in"
@@ -41,27 +41,81 @@ library(tibble)
 library(readr)
 library(purrr)
 library(stringr)
-library(destiny)
-library(limma)
-library(edgeR)
 library(ggplot2)
 library(ggthemes)
 library(ggpubr)
-library(clusterProfiler)
 library(ggrepel)
+library(ggplotify)
+library(ggcorrplot)
+library(limma)
+library(edgeR)
+library(clusterProfiler)
 library(org.Sc.sgd.db)
 library(kableExtra)
 library(gridExtra)
 library(UpSetR)
 library(cowplot)
-library(ggplotify)
 library(knitr)
-library(ggcorrplot)
 library(RColorBrewer)
 set.seed(1)
 ```
 
-```{r FUNCTIONS}
+```{r diffusion_mapping_functions}
+## standardize columns func
+norm.mat <- function(mat){
+  ms <- apply(mat, 2, function(col) (col - mean(col)) / sd(col))
+  ms
+}
+
+## compute euclid dist and standrdize to similarities
+get_euc <- function(mat, n.threads = 1, alt = 'euclidean'){
+  if(n.threads > 1){
+    eu <- parDist(mat, method = alt, threads = n.threads) %>% as.matrix()
+    ieu <- 1 / eu
+    diag(ieu) <- 0
+  }
+  
+  if(n.threads == 1){
+    eu <- dist(mat, method = alt) %>% as.matrix()
+    ieu <- 1 / eu
+    diag(ieu) <- 0
+  }
+
+  ieu
+}
+
+## function to threshold the normalized distance mat
+threshold <- function(mat, top_k = 10){
+  thr <- mat
+  tnr <- nrow(thr)
+  ## set similarities outside of the top k to 0
+  for(i in 1:tnr){
+    ## rank entries in each row in reverse order (so largest value == rank 1), 
+    ## and set entries that are outside of 1:k to 0
+    thr[i, !rank(-thr[i, ], ties.method = 'random') %in% 1:top_k] <- 0
+  }
+  
+  for(i in 1:tnr){
+    for(j in 1:tnr){
+      if(thr[i, j] == 0 & thr[j, i] != 0){
+        thr[i, j] <- thr[j, i]
+      }
+    }
+  }
+  thr
+}
+
+## function to calculate norm laplacian
+get_laplac <- function(mat){
+  L <- -mat
+  S <- rowSums(mat)
+  nL <- L / S
+  diag(nL) <- 1
+  nL
+}
+```
+
+```{r processing_functions}
 orf_to_common <- function(keys){
   common <- AnnotationDbi::select(org.Sc.sgd.db,
                                   keys = keys,
@@ -444,15 +498,54 @@ or  = "#DDDDDD" # pale grey
 
 # Introduction
 
-Wine is chemically and microbially complex. 
-During primary fermentation of wine, must derived from *Vitis vinifera* crushed grapes is fermented into ethanol. 
-*Saccharomyces cerevisiae* is usually the dominant fermenter. 
+<!-- This could be the introduction or it could be the first section of the results...it's going to depend on the target audience. -->
 
-While the core processes of wine fermentation are similar between most fermentations, there is tremendous variation in grape cultivars, vineyard site locations, fermentative organisms, and wine making styles. 
-Each of these factors may impact the final product.
+Gene expression is a dynamic process whereby a cell adjusts to its internal and external environment. 
+While some biological processes occur in steady state, many are dynamic and require observation across time to understand the full complement of transcriptomic responses elicited by a stimuli.
+In particular, environmental conditions that elicit a global shift in gene expression (e.g. onset of hypoxia) require time series sampling to capture the continuous metabolic remodelling that occurs.
+Time series gene expression surveys have been successfully applied to these types of problems (CITE: first hypoxia paper, first wine paper). 
+However, in these experiments, a single conditions was assayed to understand the ubiquitous global shifts in gene expression. 
+Expanding such inquiries to multiple groups raises problems with data analysis procedures.
 
-Other information, decided once I know what final set of results/messages are.
+First, samples become asynchronous.
+Time series profiles of cell populations rely on synchronicity between cells to identify coordinated shifts in gene expression.
+However, when expanding scientific inquiry to groups of cell populations to determine differences between groups, synchronicity is difficult to maintain across groups.
+Experimental techniques have been developed to resynchronize groups of cells, for example by arresting the cell cylce in the same phase across groups (CITE).
+However these experimental approaches are not appropriate across broad experimental designs and may not be completely effective at re-synchronization (CITE). 
 
+An additional challenge is the identification of differences between groups that are separate from or in excess of the dominant and ubiquitous global shift in gene expression.
+
+
+
+
+
+Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts. 
+
+These computational problems have been addressed in part in the single cell RNA-sequencing literature. 
+When a population of cells undergoes a global shift in gene expression, concepts like pseudotime separate cells out along their trajectory of gene expression changes. 
+
+<!-- These studies -- one of which captured the response of an external perturbation while the other captured the yeast cell cycle -- relied on synchronicity between the cells that were profiled to understand uniform transcriptional response performed by the cell population at hand.  -->
+<!-- However, these approaches are not effective when comparing separate cell populations as response rates to stimuli may vary between populations leading to asynchronization in gene expression with respect to time (reveiwed in XXX Bar-Joseph 2012). -->
+<!-- Various approaches for data alignment have been developed that principally rely on time-wrapping (CITE) or hidden Markov models (CITE). -->
+<!-- DRAW BACK TO THESE METHODS AND WHY THEY WONT WORK. -->
+<!-- clust, masigpro, metacycle, timesvector -->
+<!-- Given that we aimed to identify the commonalities and differences in gene expression across fermentations, we sought an analysis approach that did not rely on synchronicity between samples. -->
+
+In many RNA-sequencing experiments, capturing gene expression when there are few differences between groups allows researchers to identify the 
+
+In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
+Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation.
+Unlike brix measurements, latent variables are not observed but are inferred from relationships in the sequencing data.
+Dimensionality reduction algorithms like principal component analysis are commonly applied to sequencing data to identify sources of variation therein, although many algorithms can be used for this purpose [@way2020compressing].
+
+We extract these latent variables using diffusion mapping, a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
+Diffusion mapping is a common visualization technique in single cell RNA-sequencing, where the transcriptome of each cell represents a discrete point during cellular development or differentiation [@destiny2015].
+We refer to these latent variables as *diffusion components*, and to scatter plots of diffusion components as *diffusion maps*.
+Diffusion mapping extracts latent variables while differential expression provides interpretation for the drivers of separation among samples and fermentations.
+
+Here, we explore the application of diffusion mapping to two time-series RNA-sequencing data sets that profile *S. cerevisiae* populations as they undergo global shifts in gene expression.
+In the first, WINE
+In the second, HYPOXIA
 In this study, we aimed to understand how vineyard site impacts primary fermentation of Pinot noir wine.
 We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon (**Figure \@ref(fig:map)**). We profiled each fermentation using time-course RNA sequencing and used *Saccharomyces cerevisiae* gene expression as an indicator of similarities and difference across fermentation. We find...
 
@@ -474,26 +567,45 @@ info$ava <- factor(info$ava, levels = c('OR', 'AV', 'RRV', 'SNC', 'CRN',
 ```
 
 ```{r diffusion_mapping_17, include = F}
+## preprocess counts
 counts17 <- read_tsv("../v2017/outputs/counts/raw_counts.tsv") %>%
   filter(grepl(pattern = "^Y", x = gene)) %>%
   as.data.frame() %>%
   column_to_rownames("gene")
 colnames(counts17) <- gsub("_readcounts.txt", "", colnames(counts17))
 m17 <- sweep(counts17, 2, colSums(counts17), `/`)
-m17 <- t(m17)                                             # transpose counts
+m17 <- t(m17)
 
-# build diffusion map
-dm17 <- DiffusionMap(m17, k = 31, n_eigs = 144)
+## build diffusion map
+nm <- m17 %>% norm.mat()          # normalize
+aff <- nm %>%
+  get_euc(., n.threads = 1) %>% 
+  threshold(., top_k = 10)      # make affinity matrix
+Lij <- aff %>% get_laplac()     # compute laplacian
+eig <- eigen(Lij)               # smallest keig vectors
+evl <- eig$values %>%           # get eigenvalues
+  Re() %>%
+  round(., digits = 10)
+evc <- eig$vectors %>%          # get eigenvectors
+  Re() %>%
+  round(., digits = 10)
 
-qplot(y = eigenvalues(dm17)) +
-  theme_minimal() +
-  labs(x ='Diffusion component (DC)', y ='Eigenvalue') +
-  ggtitle(paste0("k = ", dm17@k))
+# create objects containing diffusion components
+for(d in 1:length(evl)){
+  assign(paste('dim', d, sep = '_'),
+         Re(evc[, rank(evl) == (d + 1)])
+  )
+}
 
-# create a df with each DC that occurs after a large jump and record metadata
-dc17 <- data.frame(DC1 = dm17$DC1, DC2 = dm17$DC2, DC3 = dm17$DC3, 
-                   DC4 = dm17$DC4, DC5 = dm17$DC5, DC6 = dm17$DC6, 
-                   DC7 = dm17$DC7, DC8 = dm17$DC8, DC9 = dm17$DC9, DC10 = dm17$DC10) %>%
+k_eig <- 10                     # specify num of variables you want to keep
+dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
+  t() %>%
+  as.data.frame()               # merge in array
+
+colnames(dat) <- paste(paste('DC', 1:(k_eig), sep = ''))
+rownames(dat) <- rownames(Lij)  # add labels
+
+dc17 <- dat %>%                  # join with metadata
   rownames_to_column("sample") %>%
   left_join(info, by = c("sample" = "id"))
 ```
@@ -513,18 +625,37 @@ colnames(counts19) <- gsub("_readcounts.txt", "", colnames(counts19))
 
 m19 <- sweep(counts19, 2, colSums(counts19), `/`)
 m19 <- t(m19)                                             # transpose counts
-# build diffusion map
-dm19 <- DiffusionMap(m19, k = 41, n_eigs = 148)
 
-qplot(y = eigenvalues(dm19)) +
-  theme_minimal() +
-  labs(x ='Diffusion component (DC)', y ='Eigenvalue') +
-  ggtitle(paste0("k = ", dm19@k))
+## build diffusion map
+nm <- m19 %>% norm.mat()        # normalize
+aff <- nm %>%
+  get_euc(., n.threads = 1) %>% 
+  threshold(., top_k = 10)      # make affinity matrix
+Lij <- aff %>% get_laplac()     # compute laplacian
+eig <- eigen(Lij)               # smallest keig vectors
+evl <- eig$values %>%           # get eigenvalues
+  Re() %>%
+  round(., digits = 10)
+evc <- eig$vectors %>%          # get eigenvectors
+  Re() %>%
+  round(., digits = 10)
 
-# create a df with each DC that occurs after a large jump and record metadata
-dc19 <- data.frame(DC1 = dm19$DC1, DC2 = dm19$DC2, DC3 = dm19$DC3, DC4 = dm19$DC4,
-                   DC5 = dm19$DC5, DC6 = dm19$DC6, DC7 = dm19$DC7, DC8 = dm19$DC8,
-                   DC9 = dm19$DC9, DC10 = dm19$DC10) %>%
+# create objects containing diffusion components
+for(d in 1:length(evl)){
+  assign(paste('dim', d, sep = '_'),
+         Re(evc[, rank(evl) == (d + 1)])
+  )
+}
+
+k_eig <- 10                     # specify num of variables you want to keep
+dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
+  t() %>%
+  as.data.frame()               # merge in array
+
+colnames(dat) <- paste(paste('DC', 1:(k_eig), sep = ''))
+rownames(dat) <- rownames(Lij)  # add labels
+
+dc19 <- dat %>%                 # join with metadata
   rownames_to_column("sample") %>%
   left_join(info, by = c("sample" = "id"))
 ```
@@ -567,37 +698,10 @@ dc9_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 10) # Test "DC9" coefficient
 dc10_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 11) # Test "DC10" coefficient
 ```
 
-## Diffusion mapping captures biological trends in primary fermentation
+## Diffusion mapping captures the dominant biological transition of primary fermentation
 
-Gene expression is a dynamic process whereby a cell adjusts to its internal and external environment. 
-While some biological processes occur in steady state, many are dynamic and require observation across time to understand the full complement of transcriptomic responses elicited by a stimuli.
-Time-series RNA-sequencing captures dynamic gene expression and has revealed XXX (CITE: gash 2002 stress response, yeast cell cycle). 
-These studies -- one of which captured the response of an external perturbation while the other captured the yeast cell cycle -- relied on synchronicity between the cells that were profiled to understand uniform transcriptional response performed by the cell population at hand. 
-However, these approaches are not effective when comparing separate cell populations as response rates to stimuli may vary between populations leading to asynchronization in gene expression with respect to time (reveiwed in XXX Bar-Joseph 2012).
-Various approaches for data alignment have been developed that principally rely on time-wrapping (CITE) or hidden Markov models (CITE).
-DRAW BACK TO THESE METHODS AND WHY THEY WONT WORK.
-<!-- clust, masigpro, metacycle, timesvector -->
-Given that we aimed to identify the commonalities and differences in gene expression across fermentations, we sought an analysis approach that did not rely on synchronicity between samples. 
-
-In a previous investigation, we used brix, a proxy for sugar concentration during fermentation, to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
-Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation.
-Unlike brix measurements, latent variables are not observed but are inferred from relationships in the sequencing data.
-We extract these latent variables using diffusion mapping, a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
-We refer to these latent variables as *diffusion components*, and to scatter plots of diffusion components as *diffusion maps*.
-While diffusion mapping extracts latent variables, differential expression provides interpretation for the drivers of separation among samples and fermentations.
-
-
-<!-- As model organism, the genes and pathways of *S. cerevisiae* are well annotated  -->
-<!-- While diffusion mapping is  -->
-
-
-<!-- Dimensionality reduction algorithms like principal component analysis are commonly applied to sequencing data to identify sources of variation therein, although many algorithms can be used for this purpose [@way2020compressing]. -->
-
-
-
-
-## Diffusion component 1 captures change in brix
-
+During fermentation, *S. cerevisiae* encounters overlapping stresses as acid and osmotic stress in early fermentation give way to nutrient limitation and high ethanol concentration.
+As the concentration of sugar drops during fermentation, 
 Diffusion component 1 captures the dominant structure between samples. 
 In **Figure \@ref(fig:dc1)**, points are plotted along diffusion component 1, but ordered by brix. 
 To test whether latent variables generated by diffusion mapping capture biologically-relevant structure of *S. cerevisiae* gene expression during wine fermentation, we performed differential expression using the continuous variable brix and the values of diffusion component 1. 
@@ -1288,7 +1392,7 @@ ggcorrplot(cor(dc_lfc_all), type = "upper", show.diag = F, lab = T,
 
 
 
-## Differences among sites in 2019 vintage
+## Diffusion mapping differentiate vineyard-site specific differences in fermentation
 
 In 2019, we altered the sampling scheme to capture early fermentation more, as adaptation to the wine environment may be different for different fermentations and show what type of stress the cells are under. 
 
@@ -1304,7 +1408,7 @@ Diffusion component 2 separates 2 hour from 16 hours samples, indicating that th
 
 
 ```{r v2019dc2dc3, fig.height = 3, fig.cap = "Diffusion component 2 and diffusion component 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples for three clusters."}
-by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+by_hour <- ggplot(dc19, aes(x = DC1, y = DC2, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
   geom_point(alpha = .8) +
   scale_color_brewer(palette = "Paired", name = "hour") + 
   theme_minimal() +
@@ -1374,6 +1478,277 @@ by_ava <- ggplot(dc19, aes(x = DC8, y = DC10, color = ava, label = ava_id)) +
 ggarrange(by_hour, by_ava, ncol = 2, legend = "bottom", labels = c("A", "B"))
 ```
 
+## Diffusion mapping works on other datasets with "developmental" trajectories
+
+OR
+
+## Diffusion mapping reveals a coordinated response to hypoxia
+
+```{r diffusion_mapping_hypoxia}
+hypoxia_info <- read_csv("hypoxia/hypoxia_info.csv")
+files <- list.files("hypoxia/GSE115171_RAW", pattern = ".txt.gz$", recursive = T, full.names = T)
+files <- c(files, list.files("hypoxia/GSE85595_RAW", pattern = "tab.gz", recursive = T, full.names = T))
+counts <- files %>%
+  purrr::set_names() %>% 
+  map_dfr(function(x) read_tsv(x, col_names = c("gene", "count")), .id = "source") %>%
+  mutate(source = gsub("\\.tabular\\.txt\\.gz", "", source)) %>%
+  mutate(source = gsub("\\.tab.gz", "", source)) %>%
+  mutate(source = gsub(".*\\/", "", source)) %>%
+  filter(grepl(pattern = "^Y", x = gene)) %>%
+  pivot_wider(id_cols = gene, names_from = source, values_from = count) %>%
+  as.data.frame() %>%
+  column_to_rownames("gene")
+
+m <- counts
+m <- sweep(m, 2, colSums(m), `/`)
+m <- m[grepl("^Y", rownames(m)), ]                    # subset to mRNA
+m <- t(m)                                             # transpose counts
+
+# build diffusion map
+dm_hyp <- DiffusionMap(m, k = 41, n_eigs = 334)
+
+# create a df with each DC that occurs after a large jump and record metadata
+dc_hyp <- data.frame(DC1 = dm_hyp$DC1, DC2 = dm_hyp$DC2, DC3 = dm_hyp$DC3, 
+                     DC4 = dm_hyp$DC4, DC5 = dm_hyp$DC5, DC7 = dm_hyp$DC7) %>%
+  rownames_to_column("sample") %>%
+  mutate(sample = gsub("GSM......._", "", sample)) %>%
+  left_join(hypoxia_info, by = "sample")
+```
+
+The diffusion map constructed from the hypoxia gene expression study shows time-ordered relationships between samples.
+DC1 captures gene expression at 30 min-post 100% nitrogen exposure, while DC2 captures a separate transition that occurs during long-term exposure to nitrogen (t > 120min). 
+Given that the 30min samples differentiate in the first diffusion component, this indicates that the short-term response to hypoxia is stronger and different from the long-term response.
+
+The majority of mutants follow the same trajectory within the diffusion map as wild type strain during time-course exposure to nitrogen. 
+Many of the mutants in this study are transcription factor deletants (e.g. rox1, hap1, mga2, upc2, ecm22, mot3, dsc1, hap4, hap2, hap3, hap5, and combinations thereof). 
+The conserved hypoxic response trajectory through the diffusion map supports redundant regulation of the hypoxic response for most deletants.
+
+However, there are two groups of outliers in this response. 
+First, the deletants  upc2, mg2, and ecm22 are differentiated along DC2 at early time points and do not experience a peak response at 30 min. 
+This indicates that these samples have gene expression profiles that resemble late-stage hypoxic response throughout nitrogen exposure.
+*UPC2* and *ECM22* both induce sterol biosynthetic genes upon sterol depletion, while *MGA2* regulates *OLE1* transcription, a gene that codes for a key protein in oleate biosynthesis.
+Both pathways require oxygen.
+The shift in these time course samples away from the 30 min peak and toward late-stage samples indicates that gene expression related to these transcription factors is important from 0-30 min in the hypoxic response.
+
+The hap1 mutant, and to a lesser extent the hap2_hap3_hap4_hap5 mutant, also deviate from the wild type trajectory.
+While hap1 resembles wild type at t = 0, it does not migrate along DC1 toward the 30 min hypoxic peak. 
+After 30 min of nitrogen exposure, it is most similar to the upc2/mga2/ecm22 deletant cluster.
+During 120-180 min, hap1 clusters with other long-exposure samples.
+Then at 240 min hap1 is back with the time zero samples. 
+The hap1 mutant was sequenced in biological duplicate and have high concordance between samples, indicating this is likely a real biological process.
+*HAP1* regulates gene expression in response to heme and oxygen levels by derepressing *ROX1*, a repressor for a set of hypoxic genes [@zitomer1997regulation]. 
+In the absence of *HAP1*, *ROX1* would not be derepressed and the hypoxic gene set would not be expressed in response to anaerobiosis. 
+The hap1 deletion appears to be important in both peak hypoxic response and maintenance of long-term hypoxic gene expression. 
+
+In contrast, the rox1 and mot3 deletants maintain a gene expression profile shifted along DC1 toward the peak hypoxic response through nitrogen exposure. 
+Further, the rox1, mot3, and rox1_mot3 deletants have the most exaggerated hypoxic peak on DC1. 
+*ROX1* represses a set of hypoxic genes, while *MOT3* leads to a larger 30 min hypoxic peak than *ROX1* or *MOT3* deletion alone, suggesting *ROX1* and *MOT3* perform some individual repression of the hypoxic gene set.
+However, it is possible that peak 30min hypoxic response was not observed in all samples. 
+
+
+```{r DMhypoxia, fig.cap="Diffusion map of wildtype and 22 mutant strains exposed to 100% nitrogen for 0-240 min. Wildtype cells are crosses, while all mutants appear as points."}
+dc_hyp$time <- as.factor(dc_hyp$time)
+scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC1, y = DC2, color = time, label = deletion)) +
+  geom_point() +
+  scale_color_viridis_d(option = "plasma") +
+  theme_minimal() +
+  theme(plot.title.position = "plot") +
+  ggtitle("GSE115171 & GSE85595") 
+
+# add WT
+scat1 + 
+  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = DC2), shape = 3)
+```
+
+
+
+We next performed differential expression along DC1 and DC2 to determine which genes were causing separation along each diffusion component.
+
+```{r diffex}
+d0 <- DGEList(counts)                          # initialize the DGE object
+d <- calcNormFactors(d0)                       # calculate normalization factors
+dc_hyp_mm <- model.matrix(~dc_hyp$DC1 + ~dc_hyp$DC2 + ~dc_hyp$DC3 + dc_hyp$DC4 + dc_hyp$DC5)
+dc_hyp_y <- voom(d, dc_hyp_mm, plot = F)
+dc_hyp_fit <- lmFit(dc_hyp_y, dc_hyp_mm)
+
+dc1_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2)
+dc2_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 3)
+```
+
+
+```{r DC1_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
+dc_viz(dc1_hyp)
+#dc_top_diffex_plot(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "hr")
+```
+
+DC1 separates a peak hypoxic response that is dominated by samples at t = 30min of nitrogen exposure. 
+The top differentially expressed genes along DC1 are shown in **Table 1**, while **Figure 2** depicts gene set enrichment for induced and repressed genes. 
+
+**WHAT IS CAUSING THE 30 MIN PEAK ON DC1?** 
+We expected this to be *ROX1*/*MOT3* regulated genes because the rox1 mot3 deletants fall so far out on DC1 (see **Figure S1**), but *ROX1*/*MOT3* is solidly captured in DC2 (see 2 next paragraphs/**Table 1**).
+
+DC2 separates hypoxic response by time exposed to 100% nitrogen. 
+The top differentially expressed genes along DC2 are shown in **Table 1**, while **Figure 3** depicts gene set enrichment for induced and repressed genes. 
+
+Unexpectedly, *ROX1* and *MOT3*, as well as genes repressed by *ROX1* and *MOT3* like *DAN1*, *TIR* genes, *ANB1*, and *HEM13*, are significantly differentially expressed along DC2.
+While we anticipated that these classic hypoxia response genes would change throughout the time course, we expected these specific differences to segregate to DC1 given that rox1 and mot3 deletants drive peak separation in DC1.
+
+
+```{r most_dc_hyp1, include = T}
+most1 <- dc_top_table(dc1_hyp)
+dc1_hyp_up <- dc1_hyp %>%
+  filter(logFC_adj > 0)
+dc1_hyp_down <- dc1_hyp %>%
+  filter(logFC_adj < 0)
+```
+
+
+
+
+
+```{r DC2_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
+
+dc_viz(dc2_hyp)
+```
+
+
+```{r most_dc_hyp2, include = T}
+most2 <- dc_top_table(dc2_hyp)
+
+dc2_hyp_up <- dc2_hyp %>%
+  filter(logFC_adj > 0)
+dc2_hyp_down <- dc2_hyp %>%
+  filter(logFC_adj < 0)
+```
+
+```{r kable_most}
+kable(cbind(most1, most2), "latex", booktabs = T,
+      caption = 'Top 15 induced and repressed genes for diffusion components 1 and 2.') %>%
+  kable_styling(font_size = 9) %>%
+  add_header_above(c("Diffusion component 1" = 3, "diffusion component 2" = 3), 
+                   align = "l", escape = F)
+```
+
+
+### Diffusion mapping captures genes involved in oxygen regulation
+
+We next investigated whether the genes identified as differentially expressed along DC1 and DC2 matched oxygen-regulated genes identified by seven previous microarray and RNA-sequencing studies. 
+These genes were collected in the 2017 publication by (**supplement table S1**) [@bendjilali2017time]. 
+
+```{r oxygen_regulated_genes}
+url <- "https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/15/TableS3.xlsx"
+download.file(url = url, destfile = "hypoxia/inputs/tabs3_oxygen_regulated_genes.xlsx")
+ox_reg <- readxl::read_excel(path = "hypoxia/inputs/tabs3_oxygen_regulated_genes.xlsx", 
+                             col_names = c('ORF', 'COMMON', 'description', 'Becerra_2002',
+                                           'Hickman_2007', 'Hickman_2011', 'Kwast_2002', 
+                                           'Lai_2005', 'Lai_2006', 'terLinde_1999', 
+                                           'terLinde_2002', 'hypoxic', 'aerobic', 'total'),
+                             sheet = 1, skip = 1)
+
+hypoxic1 <- ox_reg %>%
+  group_by(hypoxic) %>%
+  tally()
+
+aerobic1 <- ox_reg %>%
+  group_by(aerobic) %>%
+  tally()
+```
+
+Of the 11 genes that were characterized as oxygen-regulated in six or seven microarray studies, we identified 10 in the first two diffusion components.
+The one aerobic gene not identified, *CYC1*, was filtered prior to differential expression because it was not highly expressed enough across all samples 
+(mean = `r round(mean(d0["YJR048W", ][["counts"]]), digits = 2)`, sd = `r round(sd(d0["YJR048W", ][["counts"]]), digits = 2)`).
+
+```{r test_hypoxia_intersect_microarray}
+hypoxic_genes <- ox_reg %>%
+  filter(hypoxic >= 6) %>%
+  dplyr::select(ORF, COMMON)
+
+hypoxic_genes_dc1_hyp <- hypoxic_genes[hypoxic_genes$ORF %in% dc1_hyp$ORF, ]
+hypoxic_genes_dc2_hyp <- hypoxic_genes[hypoxic_genes$ORF %in% dc1_hyp$ORF, ]
+# table(hypoxic_genes_dc1_hyp $ORF %in% hypoxic_genes_dc2_hyp$ORF)
+# table(hypoxic_genes$ORF %in% dc2_hyp$ORF)
+# table(hypoxic_genes$ORF %in% dc1_hyp$ORF)
+```
+
+```{r test_aerobic_intersect_microarray}
+aerobic_genes <- ox_reg %>%
+  filter(aerobic >= 6) %>%
+  dplyr::select(ORF, COMMON)
+
+aerobic_genes_dc1_hyp <- aerobic_genes[aerobic_genes$ORF %in% dc1_hyp$ORF, ]
+aerobic_genes_dc2_hyp <- aerobic_genes[aerobic_genes$ORF %in% dc2_hyp$ORF, ]
+# table(aerobic_genes_dc1_hyp$ORF %in% aerobic_genes_dc2_hyp$ORF)
+# table(aerobic_genes$ORF %in% dc1_hyp$ORF)
+# table(aerobic_genes$ORF %in% dc2_hyp$ORF)
+```
+
+[@bendjilali2017time] further characterized genes as hypoxic or aerobic using differential expression on their wild type time series data set. 
+To understand whether diffusion mapping captured the same oxygen-regulated genes, we intersected the hypoxic and aerobic genes with genes that were differentially expressed along DC1 and DC2. 
+Two hundred forty six of 291 (84.5%) genes predicted as aerobic by [@bendjilali2017time] were significantly differentially expressed, while 418 of 519 (80.5%) genes predicted as hypoxic were significantly differentially expressed. 
+Further, if we divide the diffusion map into four quadrants, the majority of aerobic genes segregate to the same quadrant as time = 0-5min samples, while the majority of hypoxic genes segregate to quadrants with later time points.
+
+```{r}
+url <- 'https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/13/TableS1.xlsx'
+download.file(url = url, destfile = "hypoxia/inputs/tabs1_rnaseq_res.xlsx")
+rnaseq_oxreg <- readxl::read_excel(path = "hypoxia/inputs/tabs1_rnaseq_res.xlsx", sheet = 1)%>%
+  filter(grepl("^Y", gene))
+
+hypoxic <- rnaseq_oxreg %>%
+  filter(oxygen.regulated == "hypoxic") 
+
+aerobic <- rnaseq_oxreg %>%
+  filter(oxygen.regulated == "aerobic")
+
+oxreg_int <- data.frame(intersection = c("DC1 induced", "DC1 repressed", "DC2 induced", "DC2 repressed", "total"),
+                        hypoxic= c(table(hypoxic$gene %in% dc1_hyp_up$ORF)[2],
+                                    table(hypoxic$gene %in% dc2_hyp_down$ORF)[2],
+                                    table(hypoxic$gene %in% dc1_hyp_up$ORF)[2],
+                                    table(hypoxic$gene %in% dc2_hyp_down$ORF)[2],
+                                    table(hypoxic$gene %in% c(dc1_hyp_up$ORF, dc1_hyp_down$ORF, dc2_hyp_down$ORF, dc2_hyp_up$ORF))[2]), 
+                        aerobic = c(table(aerobic$gene %in% dc1_hyp_up$ORF)[2],
+                                    table(aerobic$gene %in% dc1_hyp_down$ORF)[2],
+                                    table(aerobic$gene %in% dc2_hyp_up$ORF)[2],
+                                    table(aerobic$gene %in% dc2_hyp_down$ORF)[2],
+                                    table(aerobic$gene %in% c(dc1_hyp_up$ORF, dc1_hyp_down$ORF, dc2_hyp_down$ORF, dc2_hyp_up$ORF))[2]))
+kable(oxreg_int, "latex", booktabs = T, col.names = c("Intersection", "Hypoxic (519 predicted)", "Aerobic (291 predicted)"),
+      caption = 'Intersection between oxygen regulation genes predicted by Bendjilali et al. 2017 and those predicted by this study.') %>%
+  kable_styling(font_size = 9)
+```
+
+### Overlap between diffusion components
+
+Most genes are differentially expressed in a single component. 
+However, some genes are differentially expressed in both diffusion components. 
+This likely indicates that these genes play a role in both the transcriptional remodeling that occurs at 30 mins, and in remodeling and maintenance that occur at longer time scales.
+
+```{r upset_plot_hypoxia}
+diffex_list <- list(DC1_induced = dc1_hyp_up$ORF,
+                    DC1_repressed = dc1_hyp_down$ORF,
+                    DC2_induced = dc2_hyp_up$ORF,
+                    DC2_repressed = dc2_hyp_down$ORF)
+upset_plt<- upset(fromList(diffex_list))
+```
+
+```{r dc_hyp_int}
+dc2_hyp_in_dc1_hyp <- dc2_hyp[dc2_hyp$ORF %in% dc1_hyp$ORF, ] 
+
+dc1_hyp_in_dc2_hyp <- dc1_hyp[dc1_hyp$ORF %in% dc2_hyp$ORF, ]
+dc1_hyp_in_dc2_hyp <- dc1_hyp_in_dc2_hyp[order(match(dc1_hyp_in_dc2_hyp$ORF, dc2_hyp_in_dc1_hyp$ORF)), ]
+stopifnot(all.equal(dc1_hyp_in_dc2_hyp$ORF, dc2_hyp_in_dc1_hyp$ORF))
+
+dc_hyp_int <- data.frame(dc1_hyp = dc1_hyp_in_dc2_hyp$logFC, dc2_hyp = dc2_hyp_in_dc1_hyp$logFC, ORF = dc2_hyp_in_dc1_hyp$ORF)
+# lm(dc1_hyp ~ dc2_hyp, data = dc_hyp_int)
+dc_hyp_int_plt <- ggplot(dc_hyp_int, aes(x = dc1_hyp, y = dc2_hyp, label = ORF)) +
+  geom_point(alpha = .05) +
+  xlim(c(-40, 41)) + ylim(c(-40, 41)) + 
+  labs(x = "Log2FC DC1", y = "log2FC DC2") +
+  theme_minimal()
+```
+
+```{r, fig.height=3, fig.cap="Some genes are expressed in diffusion component (DC) 1 and DC2. **A** Upset plot showing intersections of genes that are significantly induced and repressed in DC1 and DC2. The majority of genes are significantly differentially expressed in a single diffusion component. **B** Scatter plot of log2FC values for genes are significantly differentially expressed along both diffusion components. Color is fully saturated when 20 points overlap."}
+plot_grid(as.grob(upset_plt), dc_hyp_int_plt, ncol = 2, labels = c("A", "B"))
+```
+
 # Discussion
 
 In this study, we paired diffusion mapping with differential expression to capture primary fermentation of pinot noir wine measured with RNA-sequencing of musts from 15 vineyard sites. 
@@ -1387,19 +1762,27 @@ Benefits of this method:
 + compared to other methods, isolates time-varying responses in a component
 + easy to interpret a lot of samples given their relative distance to one another  
 
+
+<!-- As model organism, the genes and pathways of *S. cerevisiae* are well annotated  -->
+<!-- While diffusion mapping is  -->
+
 # Methods
+
+## Fermentation
 
 ## Sequencing and preprocessing
 
++ UC Davis DNA tech core
++ trimming, mapping, 2019 umi barcodes, htseq
+
 We normalized read counts based on total number of reads per sample (library size) prior to constructing the diffusion map. 
-As input to differential expression, we used raw sequencing counts and performed filtering and normalization with the limma package using the `filterByExpr()` and `calcNormFactors()` functions [@limma2015].
+As input to differential expression, we used raw sequencing counts and performed filtering and normalization with the limma package using the `calcNormFactors()` function [@limma2015].
 
 ## Construction of Diffusion Maps
 
 Prior to diffusion map construction, we filtered gene counts to non-mitochondrial mRNA. 
 We built the diffusion map using the Bioconductor package destiny [@destiny2015].
-The destiny diffusion map algorithm accounts for noise types inherent in 
-RNA-sequencing data such as missing values and uncertainties in measurements.
+The destiny diffusion map algorithm accounts for noise types inherent in RNA-sequencing data such as missing values and uncertainties in measurements.
 
 To select number of neighbors (k-size) in the construction of the diffusion map, we tested all values of *k* from 1 - (*n* - 2). 
 We selected the k-size that produced a graph with one component and that maximized the difference between sequential eigenvalues when eigenvalues were ordered. 
@@ -1409,13 +1792,13 @@ We selected k-sizes of 31 for the 2017 vintage and 41 for the 2019 vintage.
 
 To determine which genes drove separation of samples along each component, we used differential expression to correlate each gene with diffusion component values.
 We used limma to fit a linear regression model to each gene [@limma2015].
-Using this model, the log2FC is the slope of the line for each unit increase in the diffusion component. 
-Because diffusion components were small, we used stringentcut offs for differential expression (absolute log2FC > 3, p < .01). 
+Using this model, the log~2~ fold change is the slope of the line for each unit increase in the diffusion component. 
+We normalized log~2~ fold change values by calculating the length of the diffusion component (max - minimum) and multiplying all log~2~ fold change values by this amount. 
+We analyzed log~2~ fold change values greater than two, i.e. genes with a log~2~ fold change of at least 2 between the most separated samples along a diffusion component.
 
-## Identification of genes involved in primary fermentation 
++ clusterProfiler
 
-To identify whether our approach recapitulated previous findings about gene expression during primary fermentation of wine, we used lists of significant genes identified by [@rossignol2003genome] from their time course microarray of synthetic must.
-We intersected the open reading frame names with those we identified as significantly differentially expressed along each diffusion component.
+## Comparison against differential expression with brix
 
 # References
 
