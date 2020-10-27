@@ -538,18 +538,18 @@ or  = "#DDDDDD" # pale grey
 
 Gene expression is a dynamic process whereby a cell adjusts to its internal and external environment. 
 While some biological processes occur in steady state, many are dynamic and require observation across time to understand the full complement of transcriptomic responses elicited by a stimuli.
-In particular, environmental conditions that elicit a global shift in gene expression (e.g. onset of hypoxia) require time series sampling to capture the continuous metabolic remodelling that occurs.
-Time series gene expression surveys have been successfully applied to these types of problems (CITE: first hypoxia paper, first wine paper). 
-However, in these experiments, a single conditions was assayed to understand the ubiquitous global shifts in gene expression. 
+In particular, environmental conditions that result in a global shift in gene expression (e.g. onset of hypoxia) require time series sampling to capture continuous metabolic remodelling.
+Time series gene expression surveys have been successfully applied to these types of problems [@bendjilali2017time] (CITE brix paper). 
+In these experiments, a single conditions was assayed to understand the ubiquitous global shifts in gene expression. 
 Expanding such inquiries to multiple groups raises data analysis problems.
 
 Time series profiles of cell populations rely on synchronicity between cells to identify coordinated shifts in gene expression.
-However, synchronicity is difficult to maintain across groups of cell populations exposed to different treatments.
-Experimental techniques have been developed to resynchronize groups of cells, for example by arresting the cell cylce in the same phase across groups (CITE).
-However these experimental approaches are not appropriate across broad experimental designs and may not be completely effective at re-synchronization (CITE). 
+Synchronicity is difficult to maintain across groups of cell populations exposed to different treatments.
+Experimental techniques have been developed to resynchronize groups of cells, for example by arresting the cell cylce in the same phase across groups [@spellman1998comprehensive].
+However these experimental approaches are not appropriate across broad experimental designs and may not be completely effective at re-synchronization [@lu2004statistical; @bar2012studying]. 
 
-An additional challenge is the identification of differences between groups that are separate from or in excess to the dominant and ubiquitous global shift in gene expression.
-Structure in gene expression exists at different scales (CITE PHATE), but dominant shifts experienced by all groups may overpower weaker but biologically important signals.
+Identifying differences between groups that are separate from or in excess to the dominant and ubiquitous global shift in gene expression is another challenge.
+Structure in gene expression exists at different scales [@moon2019visualizing], but dominant shifts experienced by all groups may overpower weaker but biologically important signals.
 In experimental designs where groups undergo the same primary shift in metabolism but also react in subtly different ways, it's important to isolate and understand the transcriptomic context of those differences.
 <!-- Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts.  -->
 
@@ -559,28 +559,27 @@ Pseudotime analysis reorders asynchronous cells from absolute time to stage in d
 In particular, diffusion maps have been used to reorder asynchronously shifted cells because they preserve relationships between samples [@destiny2015].
 
 Diffusion mapping is a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
-Dimensionality reduction algorithms like principal component analysis and t-distributed stochastic neighbor embedding (tSNE) are commonly applied to sequencing data to identify sources of variation therein [@way2020compressing] (CITE PHATE).
-Diffusion mapping has strengths over these methods because it is non-linear and robust to the "horseshoe effect" (unlike PCA) [diaconis2008horseshoes], preserves distances between samples (unlike tSNE), and is insensitive to sampling density.
+Dimensionality reduction algorithms like principal component analysis and t-distributed stochastic neighbor embedding (tSNE) are commonly applied to sequencing data to identify sources of variation [@way2020compressing; @moon2019visualizing].
+Diffusion mapping has strengths over these methods because it is non-linear and robust to the "horseshoe effect" (unlike PCA) [@diaconis2008horseshoes], preserves distances between samples (unlike tSNE), and is insensitive to sampling density.
 
 As a dimensionality reduction algorithm, diffusion maps extract latent variables that represent composite sources of variation between samples. 
 Latent variables are unmeasured but are inferred from relationships in the sequencing data. 
-Diffusion maps *per se* provides no suggestion of the underlying genes that lead to separation of samples along latent variables.
 
-Here, we use diffusion maps to analyze bulk time-series RNA-sequencing of global shifts of *Saccharomyces cerevisiae* metabolism during wine fermentation from different vineyard sites and hypoxia of mutants.
+Here, we use diffusion maps to analyze bulk time-series RNA-sequencing of global shifts of *Saccharomyces cerevisiae* metabolism during wine fermentation and hypoxia.
 We use diffusion maps to resynchronize gene expression across treatment groups and to extract latent variables that represent the dominant sources of structure in the data sets.
-We refer to these latent variables as *diffusion components*.
-Then, we apply differential expression along each diffusion component to determine the genes responsible for separation among samples.
+Diffusion maps *per se* provides no suggestion of the underlying genes that lead to separation of samples along latent variables.
+We apply differential expression along each diffusion component to determine the genes responsible for separation among samples.
 We find that the primary diffussion component represents the dominant global shift in gene expression experienced by the majority of groups, while subsequent diffusion components represent subtler differences between groups. 
-
-<!-- However, these approaches are not effective when comparing separate cell populations as response rates to stimuli may vary between populations leading to asynchronization in gene expression with respect to time (reveiwed in XXX Bar-Joseph 2012). -->
-
-<!-- Given the success of this method, we sought an approach to extract latent variables with which to perform differential expression, and thereby identify and explain the sources of variation not attributable to the major metabolic transformation that occurs as sugar concentration decreases throughout fermentation. -->
-<!-- Unlike brix measurements, latent variables-->
 
 # Results
 
-Brief explanation of the output of diffusion maps?
-(Note samples at the origin of a diffusion component are neutral toward structure for that component.)
+Diffusion maps extract latent variables that represent non-linear composites of genes that vary between samples. 
+We refer to these latent variables as *diffusion components*.
+Within each diffusion component, each sample is reprsented by a number and smpales that have similar gene expression profiles for genes summaried in that component are closer along the diffusion component.
+Samples at the origin of a diffusion component do not vary along that component.
+Differential expression along a diffusion component reveals the genes that contibute most to similarity among samples. 
+Diffusion components capture diminishing structure among samples with the first accounting for the largest variation among all samples.
+
 
 ```{r metadata}
 info <- read_csv("samples_ava.csv")
@@ -753,27 +752,25 @@ dc10_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 11) # Test "DC10" coefficient
 
 ## Diffusion mapping captures the global shift of gene expression during primary fermentation
 
-During fermentation, *S. cerevisiae* encounters overlapping stresses as acid and osmotic stress in early fermentation give way to nutrient limitation and high ethanol concentration.
+During wine fermentation, *S. cerevisiae* encounters overlapping stresses such as low pH and high sugar concentration in early fermentation give way to nutrient limitation and high ethanol concentration.
 This dynamic environment leads to transcriptome remodelling throughout fermentation that allows *S. cerevisiae* to survive and dominant the transformation of grape must into wine [@rossignol2003genome; @marks2008dynamics] (CITE BRIX PAPER).
-While *S. cerevsisiae* gene expression during fermentation is consistent across diverse fermentations conditions (CITE BRIX PAPER), the chemical composition of grape must and wine is variable however wines from the same vineyard site often have similar outcomes across multiple years (e.g. vintages) [@cantu2020investigating] (CITE).
-This phenomenon is referred to as *terroir* -- the environmental and anthropomorphic factors contribute to the outcome of wine. 
+While *S. cerevsisiae* gene expression during fermentation is consistent across diverse fermentation conditions (CITE BRIX PAPER), the chemical composition of grape must and wine is variable.
+Yet wines from the same vineyard site often have similar outcomes across multiple years (e.g. vintages) [@roullier2014grape; @cantu2020investigating].
+This phenomenon is referred to as *terroir* -- the environmental and anthropomorphic factors contribute that to wine outcomes. 
 We sought to uncover the quantifiable contribution of vineyard site to wine outcomes by using *S. cerevisiae* gene expression as a biosensor of differences between fermentations.
 *S. cerevisiae* is one of the most well studied and annotated model organisms and so we took advantage of that information to uncover differences between fermentations from different vineyards.
-We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon over two vintages (**Figure \@ref(fig:map)**). 
+We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon over two vintages (**Figure \@ref(fig:fig1)**).
+The initial grape must varied in paramters like initial nitrogen, pH, malic acid, tartaric acid, non-*Saccharomyces* microbial profile, and elemental profile while the final wines differed in volatile profiles and sensory outcomes (CITE sig of site paper).
+Even still, *S. cerevisiae* had a consistent gene expression profile across fermentations from different vineyards and vintages (CITE brix paper).
+Given the variable input media, we aimed to understand how fermentations differed, and whether those differences were related to genes known to impact the sensory outcome of wine [@cordente2012flavour].
 We profiled each fermentation using time-course RNA sequencing and used *S. cerevisiae* gene expression as an indicator of similarities and difference across fermentation.
+In the 2017 vintage, we took samples corresponding approximately to the early log phase (16 hours), late log phase (40 hours), stationary phase (64, 88 hours), and end of fermentation (112 hours). 
+In the 2019 vintage, we shifted sampling forward to capture cellular adaptation after inoculation (2, 6 hours) and reduced sampling later in fermentation (16, 64, and 112 hours).
 Fermentations progressed at different rates leading to asynchronous biological progression among samples with respect to absolute time (BRIX FIGURES).
 
-```{r map, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
-include_graphics("figures/map_and_sampling.pdf") 
+```{r map, eval = FALSE, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
+map <- include_graphics("figures/map_and_sampling.pdf") 
 ```
-
-When we apply diffusion mapping to wine fermentation, we find that diffusion component 1 captures the dominant metabolic transition of *S. cerevisiae* during fermentation and re-orders samples according to brix which reflects stage of fermentation (**Figure \@ref(fig:dc1)**).
-While we used different sampling schemes in the 2017 and 2019 vintages, samples are ordered by decreasing brix in both vintages.
-Brix is a proxy for sugar concentration during fermentation, and sugar concentrations continuously drop as *S. cerevisiae* ferments sugar into ethanol.
-
-In a previous investigation, we used brix to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
-To test whether diffusion mapping captures the genes known to change expression during fermentation, we performed differential expression over the diffusion component and compared the log~2~ fold change values of genes against those obtained with differential expression using brix.
-Log~2~ fold change values are highly correlated between both methods of differential expression (**Figure \@ref(fig:dc1)C, Figure \@ref(fig:upsetgrid)**), indicating that the primary diffusion component captures the dominant global shift in gene expression during fermentation.
 
 ```{r diffex_brix_17}
 brix_counts17  <- counts17                    # non-wine samples already filtered
@@ -841,7 +838,7 @@ corr_plt <- ggcorrplot(corr_l2fc, type = "upper", show.diag = T, lab = T,
   theme(legend.position = "bottom")
 ```
 
-```{r dc1, fig.height = 3.5, fig.cap = "Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in **A.** the 2017 vintage and **B.** the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **C.** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
+```{r dc1, eval = FALSE, fig.height = 6, fig.width = 3.5, fig.cap = "Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in **A.** the 2017 vintage and **B.** the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **C.** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
 p17 <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
   geom_jitter() +
   scale_color_viridis_c() +
@@ -860,8 +857,20 @@ p19 <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
         axis.title.y = element_blank()) +
   ggtitle("2019") 
 
-ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c("A", "B")), corr_plt, labels = c("", "C"))
+ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 1, nrow =2)
 ```
+
+```{r fig1, fig.cap = "**A** Map of vineyard site American Viticulture Areas. **B** Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation. **C, D** Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in the 2017 vintage and the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **E** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
+include_graphics("figures/map_and_sampling2.pdf") 
+```
+
+When we apply diffusion mapping to wine fermentation, we find that diffusion component 1 captures the dominant metabolic transition of *S. cerevisiae* during fermentation and re-orders samples according to stage of fermentation (**Figure \@ref(fig:fig1)C-D**).
+While we used different sampling schemes in the 2017 and 2019 vintages, samples are ordered by decreasing brix in both vintages.
+Brix is a proxy for sugar concentration during fermentation, and sugar concentrations continuously drop as *S. cerevisiae* ferments sugar into ethanol.
+
+In a previous investigation, we used brix to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
+To test whether diffusion mapping captures the genes known to change expression during fermentation, we performed differential expression over the diffusion component and compared the log~2~ fold change values of genes against those obtained with differential expression using brix.
+Log~2~ fold change is strongly correlated between both methods of differential expression (**Figure \@ref(fig:fig1)E, Figure \@ref(fig:upsetgrid)**), indicating that the primary diffusion component captures the dominant global shift in gene expression during fermentation.
 
 ## Metabolic remodelling occurs throughout fermentation
 
