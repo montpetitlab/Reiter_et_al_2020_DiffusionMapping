@@ -20,6 +20,7 @@ header-includes:
 - \newcommand{\beginsupplement}{\setcounter{table}{0}  \renewcommand{\thetable}{S\arabic{table}}
   \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
 - \usepackage[font={small,it}, labelfont={bf}]{caption}
+- \usepackage{setspace}\doublespacing
 keep_tex: yes
 output:
   bookdown::pdf_document2:
@@ -638,6 +639,17 @@ dc17 <- dat %>%                  # join with metadata
   left_join(info, by = c("sample" = "id"))
 ```
 
+```{r plot_eig_vals17, eval = F}
+tmp <- data.frame(val = eig$values) %>%
+  arrange(val) %>%
+  mutate(num = 1:length(eig$values))
+
+ggplot(tmp, aes(y = val, x = num)) + 
+  geom_point() +
+  theme_minimal() +
+  ggtitle("k=10 2017")
+```
+
 ```{r diffusion_mapping_19, include = F}
 counts19 <- read_tsv("v2019/outputs/counts/raw_counts.tsv") %>%
   dplyr::filter(grepl(pattern = "^Y", x = gene)) %>%
@@ -688,6 +700,17 @@ rownames(dat) <- rownames(Lij)  # add labels
 dc19 <- dat %>%                 # join with metadata
   rownames_to_column("sample") %>%
   left_join(info, by = c("sample" = "id"))
+```
+
+```{r plot_eig_vals19, eval = F}
+tmp <- data.frame(val = eig$values) %>%
+  arrange(val) %>%
+  mutate(num = 1:length(eig$values))
+
+ggplot(tmp, aes(y = val, x = num)) + 
+  geom_point() +
+  theme_minimal() +
+  ggtitle("k=10 2019")
 ```
 
 ```{r diffex17}
@@ -843,7 +866,10 @@ ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "b
 ## Metabolic remodelling occurs throughout fermentation
 
 We next explored subsequent diffusion components to determine the non-dominant drivers of structure among groups (**Figure \@ref(fig:allDCs2017)**, **Figure \@ref(fig:allDCs2019)**).
-While progression through fermentation is the primary driver of separation among samples, consistent transitions in early fermentation and late fermentation also drive structure among groups.
+While progression through fermentation is the primary driver of separation among samples, consistent transitions in early fermentation and late fermentation drive secondary structure among samples.
+Diffusion components capture cellular remodelling in early fermentation, entry into stationary phase, and starvation during late fermentation.
+
+Incorporate **Table  \@ref(tab:numdiffex)**: In general, there are diminishing number of differentially expressed genes across diffusion components indicating increasingly subtle differences between samples.
 
 ```{r numdiffex}
 num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4", 
@@ -902,6 +928,13 @@ During the 2019 vintage, we sampled three times in early fermentation to capture
 Metabolic restructuring during early fermentation is bigger than transitions at end of fermentation.
 Diffusion components 2 and 3 both differentiate early fermentation samples (2 hours, 6 hours, and 16 hours post-inoculation) while diffusion component 4, 6, and 8 differentiate late fermentation samples (64 hours, 112 hours post-inoculation). 
 
+Notes about biology of transitions.
+
++ 2hr samples are more similar to 16 hours samples on diffusion component 2, which explains more of the variation among all samples.
+
+Along DC2, genes *TIR1*, *TIR2*, *TIR3*, *DAN1*, and *TIR4* are the top 5 repressed genes, indicating gene expression for cell wall remodelling is highest at 16 hrs post inoculation.
+Pathways like ribosome biogenesis, RNA transport, RNA degradation, and basal transcription factors are induced along DC2, while biosynthesis of amino acids, carbon metabolism, and steroid biosythesis are enriched in repressed genes (**Figure \@ref(fig:DC2viz2019)**), reflecting the stressful transition yeast make upon inoculation.
+
 
 ```{r v2019dc2dc3, fig.height = 5, fig.cap = "Metabolic transitions in early and late fermentation separate groups. **A, B** Diffusion components 2 and 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples for three clusters. **C, D** Diffusion componenst 4 and 6 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples separate by time in fermentation and vineyard site region."}
 by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
@@ -938,57 +971,64 @@ ggarrange(ggarrange(by_hour, by_hour_46, labels = c("A", "C"), legend = "bottom"
 
 ```
 
++ Early fermentation separation:
+  + SMV sites/OR sites doing their own thing
++ End of fermentation separation
++ 2017 quality discussion: 
 
+Unlike the 2019 vintage, we do not observe clear delineations among samples taken at the same time in late fermentation in the 2017 vintage.
+While we detect dominant drives of variation among samples, e.g. gene expression remodelling during primary fermentation and transition from stationary phase to end of fermentation, we think that lack of grouping among samples may be indicative of a data quality issue.
+All gene expression data are inherently noisey (CITE).
+With advances in sequencing technology, we sequenced the 2019 vintage with unique molecular identifier (UMI) barcodes and thus were better able to demultiplex sequencing lanes and remove PCR duplicates. 
+While diffusion mapping faithfully recapitulates the dominant metabolic processes in fermentation, we are skeptical that noise in the data interferes with our ability to draw further conclusions from higher diffusion components.
 
-## Something about vintage-specific differences
+## Vineyard site differentiates samples within stages in fermentations
 
-**Figure \@ref(fig:allDCs2017)** and **Figure \@ref(fig:allDCs2019)** depict one dimensional plots of the first ten diffusion components for each vintage, while **Table \@ref(tab:numdiffex)** summarizes the number of differentially expressed genes across each component. 
-When colored by brix, the structure of the samples is sometimes apparent. 
-For example, in the 2019 vintage, DC2, DC4, DC6, and DC7 capture differences in early fermenation, DC5 captures differences in late fermentation, and DC3 captures difference in the inoculum samples. 
-In the 2017 vintage, DC2 captures variation in late-fermentation samples.
-While there is generaly a diminishing number of differentially expressed genes in higher components, there is still a significant difference in each of these components (**Table \@ref(tab:numdiffex)**).
+The extremes of each diffusion component represent samples with the most differentiated transcriptome for genes in that component.
 
++ DC2/DC3: SRH and OR are early outliers. We expect few differences given tight timeline of sampling, but cells from these fermentations may be at a different point in fermentation
++ DC4: 64-112 OR, SNC, and AS are in the middle instead of separating with the other 64/112 hour samples. More moderate fermentation behavior? (see below)
++ DC5: SEPARATION OF 2 HOURS SAMPLES - vitamins, cell wall, glycosyl. Look at microbiome of the sites on either side of the origin.
++ DC6: 64 hour OR samples. Less fatty acid metabolism but also 3 of the genes are nitrogen (PUT1, PUT2, DAL5). DC6 correlates with initial NOPA & NH3 -- 35%. Check nitrogen additions.
++ DC7: 16 hour samples, SMV vs. SRH. ADH4 SMV FUSEL ALCOHOL PRODUCTION. Very few differences bewteen these samples.
+  + What could remediate this? look at redox balance etc. for what make ADH3 more active.
++ DC8: 112hr SNC and AS CELLULAR REPSONSE TO HYDROGEN PEROXIDE (check genes)
++ DC9: 6, 16hr samples; SMV. Phosphate (by eye), cell wall/extracellular region
++ DC10: 6, 2hr Cell wall remodelling; malic acid; heme binding; tetrapyrole binding
 
-## Diffusion mapping differentiate vineyard-site specific differences in fermentation
+```{r eval = F}
+tmp <- dc19 %>%
+  column_to_rownames("sample") %>%
+  dplyr::select(-wine_tube_id, -year, -ts_sum_id, -micro_id, -tank, -tank_letter, 
+                -rootstock, -ava_id, -ava, -nutristart, -dap, -initial_yan,
+                -total_gdd_f, -initial_brix)
+ggcorrplot(cor(tmp), show.diag = T, lab = T,
+           sig.level = 0.05, p.mat = cor_pmat(tmp), insig = "blank", 
+           hc.order = T, digits = 2, lab_size = 2, tl.cex = 9, 
+           lab_col = "white", show.legend = T,  legend.title =  "",
+           colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  theme(legend.position = "bottom")
 
-In 2019, we altered the sampling scheme to capture early fermentation more, as adaptation to the wine environment may be different for different fermentations and show what type of stress the cells are under. 
+####################
+ggplot(dc19, aes(x = DC9, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
+  geom_jitter(alpha = .6, size = 2) +
+  scale_color_brewer(palette = "Paired", name = "hour") + 
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) 
+```
 
-Diffusion components 2 and 4 separate early fermentation samples (**Figure \@ref(fig:v2019dc2dc3)**). 
-Sample stake at 2hr, 6hr, and 16hr form distinct clusters, where DC2 separates all 3 time points and DC4 separates the 6hr samples from teh other timepoints. 
-Along DC2, genes *TIR1*, *TIR2*, *TIR3*, *DAN1*, and *TIR4* are the top 5 repressed genes, indicating gene expression for cell wall remodelling is highest at 16 hrs post inoculation (**Table \@ref(tab:kable19most)**).
-Pathways like ribosome biogenesis, RNA transport, RNA degradation, and basal transcription factors are induced along DC2, while biosynthesis of amino acids, carbon metabolism, and steroid biosythesis are enriched in repressed genes (**Figure \@ref(fig:DC2viz2019)**), reflecting the stressful transition yeast make upon inoculation.
-
-Along DC4, repressed genes are enriched for proteasome, yeast cell cycle, DNA replication, mismatch repair, terpenoid biosynthesis, and one carbon pool by folate. 
-These pathways are more highly expressed in the 6hr samples. 
-Samples from both *OR2* and *SRH1* are accelerated along the transition from 2hr to 6hr, and 6hr to 16hr. However, overall, there is high similarity among sites in DC2 and DC4. 
-Diffusion component 2 separates 2 hour from 16 hours samples, indicating that this is the largest source of variation after metabolic remodeling that occurs other than decrease in brix. 
-
-
-Conversely, diffusion component 6 and 7 capture separation in early fermentation samples. Along DC6, samples from sites *SMV1*, *SMV2* (1), and to a lesser extent *RRV3* and *AV1* separate from other 2hr samples. 
-Only one gene is induced (*PDC5*), and two genes are repressed (*ARG1* and *RPS14B*).
-*PDC5* is a minor isoform of pyruvate decarboxylase, and is a key enzyme in alcoholic fermentation. 
-It is also involved in amino acid catabolism.
-*ARG1* is part of the arginine biosynthesis pathway, while *RPS14B* is required for ribosome assembly. 
-This indicates that...
-
-Along DC7, samples from the 2hr, 6hr, and 16hr time points separate. The *SRH1* 2hr and 6hr samples separate in one direction the most, followed by *OR2* 2hr and 6hr and *SMV2* 16hr. 
-On the other side *CRN1* and *AS1* separate. 
-Only GO term transmembrane transport is enriched in induced genes, and only intracellular mRNA localization is enriched in repressed genes (**Figure S14**).
-
-Diffusion component 3 separates inoculum from all other samples (see **Figure 4B**). 
-Inoculum samples are enriched for metabolic pathways like carbon metabolism, TCA cycle, pyruvate metabolism, and glyoxylate metabolism, among others (**Figure S10**). 
-Conversely,  all wine samples are enriched for ribosome, biosynthesis of amino acids, glcolysis/gluconeogenesis, steroid biosynthesis, and terpenoid backbone (**Figure S10**). 
-
-Late fermentation samples separate in diffusion component 5. 
-Given that two components dominated by changes in early fermentation occur before this, this indicates that there is more variation in the early fermentation response than there is in late fermentation.
-While samples largely separate by brix, with dry fermentations segregating to one side, samples from site *AS2* break this trend. 
-Induced genes in dry samples are enriched for protein processing in the ER, and repressed genes are enriched for pathways like ribosomes, carbon metabolism, purine metabolism, and fatty acid metabolism (**Figure S12**)
-
-## Diffusion mapping works on other datasets with "developmental" trajectories
+## Diffusion mapping works on other data sets with global shifts in gene expression
 
 OR
 
 ## Diffusion mapping reveals a coordinated response to hypoxia
+
+While diffusion maps successfully distinguished major and minor differences in fermentations from vineyard sites, we were curious whether this method is broadly applicable to RNA-sequencing where global shifts in gene expression occurr.
+To address this, we identified a time series gene expression profile of exposure of *S. cerevisiae* to hypoxia.
+Hypoxia is...
+The hypoxic response is organized by transcription factors...
+Data set represents knock-out mutants of key transcription factors during a 240 minute gradual transition to hypoxia.
+
 ```{r hypoxia_functions}
 dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "deletion"), show_genes = F){
   # dc <- dc19
@@ -1144,7 +1184,7 @@ dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "del
   if(color_by == "time"){
     plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
       geom_jitter() +
-      scale_color_viridis_c(trans = 'reverse') +      
+      scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
       labs(x = dc_num) +
       theme_minimal() +
       theme(plot.title = element_text(hjust = 0.5),
@@ -1214,7 +1254,7 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "del
   if(color_by == "time"){
     plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
       geom_jitter() +
-      scale_color_viridis_c(trans = 'reverse') +
+      scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
       labs(x = dc_num) +
       theme_minimal() +
       theme(plot.title = element_text(hjust = 0.5),
@@ -1222,7 +1262,7 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "del
             axis.title.y = element_blank(),
             legend.position = "bottom") 
   } else if(color_by == "deletion") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
+    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = deletion)) +
       geom_jitter() +
       theme_minimal() +
       labs(x = dc_num) +
@@ -1239,8 +1279,7 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con, color_by = c("time", "del
 }
 ```
 
-```{r diffusion_mapping_hypoxia}
-## preprocessing
+```{r preprocess_hypoxia}
 hypoxia_info <- read_csv("hypoxia/hypoxia_info.csv")
 files <- list.files("hypoxia/GSE115171_RAW", pattern = ".txt.gz$", recursive = T, full.names = T)
 files <- c(files, list.files("hypoxia/GSE85595_RAW", pattern = "tab.gz", recursive = T, full.names = T))
@@ -1259,12 +1298,14 @@ m <- counts
 m <- sweep(m, 2, colSums(m), `/`)
 m <- m[grepl("^Y", rownames(m)), ]                    # subset to mRNA
 m <- t(m)                                             # transpose counts
+```
 
+```{r diffusion_mapping_hypoxia}
 ## Build diffusion map
 nm <- m %>% norm.mat()        # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
-  threshold(., top_k = 10)      # make affinity matrix
+  threshold(., top_k = 20)      # make affinity matrix
 Lij <- aff %>% get_laplac()     # compute laplacian
 eig <- eigen(Lij)               # smallest keig vectors
 evl <- eig$values %>%           # get eigenvalues
@@ -1281,7 +1322,7 @@ for(d in 1:length(evl)){
   )
 }
 
-k_eig <- 10                     # specify num of variables you want to keep
+k_eig <- 20                     # specify num of variables you want to keep
 dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
   t() %>%
   as.data.frame()               # merge in array
@@ -1295,126 +1336,148 @@ dc_hyp <- dat %>%               # join with metadata
   left_join(hypoxia_info, by = "sample")
 ```
 
-The diffusion map constructed from the hypoxia gene expression study shows time-ordered relationships between samples.
-DC1 captures gene expression at 30 min-post 100% nitrogen exposure, while DC2 captures a separate transition that occurs during long-term exposure to nitrogen (t > 120min). 
-Given that the 30min samples differentiate in the first diffusion component, this indicates that the short-term response to hypoxia is stronger and different from the long-term response.
+```{r, eval = F}
+tmp <- data.frame(val = eig$values) %>%
+  arrange(val) %>%
+  mutate(num = 1:length(eig$values))
 
-The majority of mutants follow the same trajectory within the diffusion map as wild type strain during time-course exposure to nitrogen. 
-Many of the mutants in this study are transcription factor deletants (e.g. rox1, hap1, mga2, upc2, ecm22, mot3, dsc1, hap4, hap2, hap3, hap5, and combinations thereof). 
-The conserved hypoxic response trajectory through the diffusion map supports redundant regulation of the hypoxic response for most deletants.
+ggplotly(ggplot(tmp, aes(y = val, x = num)) + 
+  geom_point() +
+  theme_minimal() +
+  ggtitle("k=20 hypoxia"))
+```
 
-However, there are two groups of outliers in this response. 
-First, the deletants  upc2, mg2, and ecm22 are differentiated along DC2 at early time points and do not experience a peak response at 30 min. 
-This indicates that these samples have gene expression profiles that resemble late-stage hypoxic response throughout nitrogen exposure.
-*UPC2* and *ECM22* both induce sterol biosynthetic genes upon sterol depletion, while *MGA2* regulates *OLE1* transcription, a gene that codes for a key protein in oleate biosynthesis.
-Both pathways require oxygen.
-The shift in these time course samples away from the 30 min peak and toward late-stage samples indicates that gene expression related to these transcription factors is important from 0-30 min in the hypoxic response.
+Diffusion component 1 captures the time-dependent transition to a hypoxic phenotype. 
+Wild type cells experience a sharp transition from 0-5 minutes of nitrogen exposure, indicating a fast metabolic transition to hypoxia that matures over the remainder of the time course (**Figure \@ref(fig:DC1hypoxia)**).
+Deletants deviate from this pattern and have slower transitions to a hypoxic phenotype or lack maintenance of that phenotype over the time course.
 
-The hap1 mutant, and to a lesser extent the hap2_hap3_hap4_hap5 mutant, also deviate from the wild type trajectory.
-While hap1 resembles wild type at t = 0, it does not migrate along DC1 toward the 30 min hypoxic peak. 
-After 30 min of nitrogen exposure, it is most similar to the upc2/mga2/ecm22 deletant cluster.
-During 120-180 min, hap1 clusters with other long-exposure samples.
-Then at 240 min hap1 is back with the time zero samples. 
-The hap1 mutant was sequenced in biological duplicate and have high concordance between samples, indicating this is likely a real biological process.
-*HAP1* regulates gene expression in response to heme and oxygen levels by derepressing *ROX1*, a repressor for a set of hypoxic genes [@zitomer1997regulation]. 
-In the absence of *HAP1*, *ROX1* would not be derepressed and the hypoxic gene set would not be expressed in response to anaerobiosis. 
-The hap1 deletion appears to be important in both peak hypoxic response and maintenance of long-term hypoxic gene expression. 
-
-In contrast, the rox1 and mot3 deletants maintain a gene expression profile shifted along DC1 toward the peak hypoxic response through nitrogen exposure. 
-Further, the rox1, mot3, and rox1_mot3 deletants have the most exaggerated hypoxic peak on DC1. 
-*ROX1* represses a set of hypoxic genes, while *MOT3* leads to a larger 30 min hypoxic peak than *ROX1* or *MOT3* deletion alone, suggesting *ROX1* and *MOT3* perform some individual repression of the hypoxic gene set.
-However, it is possible that peak 30min hypoxic response was not observed in all samples. 
-
-
-```{r DMhypoxia, fig.cap="Diffusion map of wildtype and 22 mutant strains exposed to 100% nitrogen for 0-240 min. Wildtype cells are crosses, while all mutants appear as points."}
-#dc_hyp$time <- as.factor(dc_hyp$time)
-scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC1, y = DC2, color = time, label = deletion)) +
-  geom_point(size = 2) +
-  scale_color_viridis_c(trans = 'reverse') +
+```{r DC1hypoxia, fig.height = 2, fig.cap="Diffusion map of wildtype and 22 mutant strains exposed to 100% nitrogen for 0-240 minutes. Wildtype cells are triangles, while mutants appear as points."}
+dc_hyp$time <- as.factor(dc_hyp$time)
+scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC1, y = 0, color = time, label = deletion)) +
+  geom_jitter(size = 2) +
+  scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
   theme_minimal() +
   theme(plot.title.position = "plot") 
 
 # add WT
 scat1 + 
-  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = DC2), shape = 3, size = 2)
+  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = 0), shape = 17, size = 4, color = "black")+
+  geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = 0), shape = 17, size = 3, fill = "black") 
 ```
 
+```{r plot_hypoxia, eval=F}
+plot_map_hypoxia <- function(dc_hyp, dc_num){
+  dc_hyp$time <- as.factor(dc_hyp$time)
+  dc_hyp <- dc_hyp %>%
+    dplyr::select(DC = all_of(dc_num), time, deletion, sample)
+  scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC, y = 0, color = time, label = deletion)) +
+    geom_jitter(size = 2) +
+    scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
+    theme_minimal() +
+    theme(plot.title.position = "plot") +
+    labs(x = dc_num)
+  
+  # add WT
+  scat1 <- scat1 + 
+    geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC, y = 0), shape = 17, size = 4, color = "black")+
+    geom_point(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC, y = 0), shape = 17, size = 3, fill = "black") 
+  return(scat1)
+}
+
+ggplotly(plot_map_hypoxia(dc_hyp, "DC1"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC2"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC3"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC4"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC5"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC6"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC7"))
+ggplotly(plot_map_hypoxia(dc_hyp, 'DC8'))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC9"))
+ggplotly(plot_map_hypoxia(dc_hyp, "DC10"))
+#ggplotly(plot_map_hypoxia(dc_hyp, "DC12"))
+#ggplotly(plot_map_hypoxia(dc_hyp, "DC14"))
 
 
-We next performed differential expression along DC1 and DC2 to determine which genes were causing separation along each diffusion component.
 
-```{r diffex}
+```
+
+```{r diffex_hypoxia}
 d0 <- DGEList(counts)                          # initialize the DGE object
 d <- calcNormFactors(d0)                       # calculate normalization factors
-dc_hyp_mm <- model.matrix(~dc_hyp$DC1 + ~dc_hyp$DC2 + ~dc_hyp$DC3 + dc_hyp$DC4 + dc_hyp$DC5)
+dc_hyp_mm <- model.matrix(~dc_hyp$DC1 + ~dc_hyp$DC2 + ~dc_hyp$DC3 + dc_hyp$DC4 + dc_hyp$DC5 + ~dc_hyp$DC6 + ~dc_hyp$DC7 + dc_hyp$DC8 + dc_hyp$DC9 + dc_hyp$DC10)
 dc_hyp_y <- voom(d, dc_hyp_mm, plot = F)
 dc_hyp_fit <- lmFit(dc_hyp_y, dc_hyp_mm)
 
 dc1_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2)
 dc2_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 3)
+dc3_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 4)
+dc4_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 5)
+dc5_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 6)
+dc6_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 7)
+dc7_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 8)
+dc8_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 9)
+dc9_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 10)
+dc10_hyp <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 11)
+
+dc1_hyp_all <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2, adj.p.filt = 1, filter_logFC = F)
+dc2_hyp_all <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2, adj.p.filt = 1, filter_logFC = F)
 ```
 
-
-```{r DC1_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
+```{r plot_top_hypoxia, eval = F, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
 
 dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC3", dc_con = dc3_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC4", dc_con = dc4_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC5", dc_con = dc5_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC7", dc_con = dc7_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC8", dc_con = dc8_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC9", dc_con = dc9_hyp, color_by = "time")
+dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC10", dc_con = dc10_hyp, color_by = "time")
+
+
+
 dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC3", dc_con = dc3_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC4", dc_con = dc4_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC5", dc_con = dc5_hyp, color_by = "time")
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp, color_by = "time")
 ```
 
-DC1 separates a peak hypoxic response that is dominated by samples at t = 30min of nitrogen exposure. 
-The top differentially expressed genes along DC1 are shown in **Table 1**, while **Figure 2** depicts gene set enrichment for induced and repressed genes. 
-
-**WHAT IS CAUSING THE 30 MIN PEAK ON DC1?** 
-We expected this to be *ROX1*/*MOT3* regulated genes because the rox1 mot3 deletants fall so far out on DC1 (see **Figure S1**), but *ROX1*/*MOT3* is solidly captured in DC2 (see 2 next paragraphs/**Table 1**).
-
-DC2 separates hypoxic response by time exposed to 100% nitrogen. 
-The top differentially expressed genes along DC2 are shown in **Table 1**, while **Figure 3** depicts gene set enrichment for induced and repressed genes. 
-
-Unexpectedly, *ROX1* and *MOT3*, as well as genes repressed by *ROX1* and *MOT3* like *DAN1*, *TIR* genes, *ANB1*, and *HEM13*, are significantly differentially expressed along DC2.
-While we anticipated that these classic hypoxia response genes would change throughout the time course, we expected these specific differences to segregate to DC1 given that rox1 and mot3 deletants drive peak separation in DC1.
-
-
-```{r most_dc_hyp1, include = T}
-most1 <- dc_top_table(dc1_hyp)
+```{r dc_hyp1_filt}
+# with log2fc > 2
 dc1_hyp_up <- dc1_hyp %>%
   filter(logFC_adj > 0)
 dc1_hyp_down <- dc1_hyp %>%
   filter(logFC_adj < 0)
+
+# all sig
+dc1_hyp_all_up <- dc1_hyp_all %>%
+  filter(logFC_adj > 0) %>%
+  filter(adj.P.Val < 0.05)
+dc1_hyp_all_down <- dc1_hyp_all %>%
+  filter(logFC_adj < 0) %>%
+  filter(adj.P.Val < 0.05)
 ```
 
-
-
-
-
-```{r DC2_viz, fig.height = 5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1. Only the top 10 enriched categories are displayed for each enrichment analysis. **A** KEGG pathways that are enriched in induced genes. **B** KEGG pathways that are enriched in repressed genes. **C** Gene Ontologies in category *biological processes* that are enriched in induced genes. **D** Gene Ontologies in category *biological processes* that are enriched in repressed genes."}
-
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
-```
-
-
-```{r most_dc_hyp2}
-most2 <- dc_top_table(dc2_hyp)
-
+```{r dc_hyp2_filt}
 dc2_hyp_up <- dc2_hyp %>%
   filter(logFC_adj > 0)
 dc2_hyp_down <- dc2_hyp %>%
   filter(logFC_adj < 0)
+
+dc2_hyp_all_up <- dc2_hyp_all %>%
+  filter(logFC_adj > 0) %>%
+  filter(adj.P.Val < 0.05)
+dc2_hyp_all_down <- dc2_hyp_all %>%
+  filter(logFC_adj < 0) %>%
+  filter(adj.P.Val < 0.05)
 ```
 
-```{r kable_most, eval = F}
-kable(cbind(most1, most2), "latex", booktabs = T,
-      caption = 'Top 15 induced and repressed genes for diffusion components 1 and 2.') %>%
-  kable_styling(font_size = 9) %>%
-  add_header_above(c("Diffusion component 1" = 3, "diffusion component 2" = 3), 
-                   align = "l", escape = F)
-```
-
-
-### Diffusion mapping captures genes involved in oxygen regulation
-
-We next investigated whether the genes identified as differentially expressed along DC1 and DC2 matched oxygen-regulated genes identified by seven previous microarray and RNA-sequencing studies. 
-These genes were collected in the 2017 publication by (**supplement table S1**) [@bendjilali2017time]. 
+We next investigated whether genes differentially expressed genes along diffusion component 1 match oxygen-regulated genes identified by seven previous microarray and RNA-sequencing studies of hypoxia [@bendjilali2017time].
+Of the 11 genes that were characterized as oxygen-regulated in six or seven microarray studies, we identify eight in the first diffusion component with a log~2~ fold change greater than 2 while all 11 genes are significantly differentially expressed.
 
 ```{r oxygen_regulated_genes}
 url <- "https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/15/TableS3.xlsx"
@@ -1435,20 +1498,18 @@ aerobic1 <- ox_reg %>%
   tally()
 ```
 
-Of the 11 genes that were characterized as oxygen-regulated in six or seven microarray studies, we identified 10 in the first two diffusion components.
-The one aerobic gene not identified, *CYC1*, was filtered prior to differential expression because it was not highly expressed enough across all samples 
-(mean = `r round(mean(d0["YJR048W", ][["counts"]]), digits = 2)`, sd = `r round(sd(d0["YJR048W", ][["counts"]]), digits = 2)`).
-
 ```{r test_hypoxia_intersect_microarray}
 hypoxic_genes <- ox_reg %>%
   filter(hypoxic >= 6) %>%
   dplyr::select(ORF, COMMON)
 
 hypoxic_genes_dc1_hyp <- hypoxic_genes[hypoxic_genes$ORF %in% dc1_hyp$ORF, ]
-hypoxic_genes_dc2_hyp <- hypoxic_genes[hypoxic_genes$ORF %in% dc1_hyp$ORF, ]
-# table(hypoxic_genes_dc1_hyp $ORF %in% hypoxic_genes_dc2_hyp$ORF)
-# table(hypoxic_genes$ORF %in% dc2_hyp$ORF)
-# table(hypoxic_genes$ORF %in% dc1_hyp$ORF)
+
+# try with log fc 1.5 instead of 2
+dc1_hyp_p <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2, adj.p.filt = 1, filter_logFC = F) %>%
+  filter(adj.P.Val < 0.05)
+hypoxic_genes_dc1_hyp <- hypoxic_genes[hypoxic_genes$ORF %in% dc1_hyp_p$ORF, ]
+
 ```
 
 ```{r test_aerobic_intersect_microarray}
@@ -1458,17 +1519,17 @@ aerobic_genes <- ox_reg %>%
 
 aerobic_genes_dc1_hyp <- aerobic_genes[aerobic_genes$ORF %in% dc1_hyp$ORF, ]
 aerobic_genes_dc2_hyp <- aerobic_genes[aerobic_genes$ORF %in% dc2_hyp$ORF, ]
+
 # table(aerobic_genes_dc1_hyp$ORF %in% aerobic_genes_dc2_hyp$ORF)
 # table(aerobic_genes$ORF %in% dc1_hyp$ORF)
 # table(aerobic_genes$ORF %in% dc2_hyp$ORF)
 ```
 
-[@bendjilali2017time] further characterized genes as hypoxic or aerobic using differential expression on their wild type time series data set. 
-To understand whether diffusion mapping captured the same oxygen-regulated genes, we intersected the hypoxic and aerobic genes with genes that were differentially expressed along DC1 and DC2. 
-Two hundred forty six of 291 (84.5%) genes predicted as aerobic by [@bendjilali2017time] were significantly differentially expressed, while 418 of 519 (80.5%) genes predicted as hypoxic were significantly differentially expressed. 
-Further, if we divide the diffusion map into four quadrants, the majority of aerobic genes segregate to the same quadrant as time = 0-5min samples, while the majority of hypoxic genes segregate to quadrants with later time points.
+[@bendjilali2017time] further characterized genes as hypoxic or aerobic using differential expression of wild type time series data set. 
+To understand whether diffusion mapping captured the same oxygen-regulated genes, we intersected the hypoxic and aerobic genes with genes that were differentially expressed along DC1 and DC2 (**Table \@ref(tab:bendjilali)**). 
+Two hundred thirty-nine of 291 (82.1%) genes predicted as aerobic by [@bendjilali2017time] were significantly induced prior to exposure to nitrogen, while 422 of 519 (81.3%) genes predicted as hypoxic significantly induced after prolonged exposure to nitrogen. 
 
-```{r}
+```{r bendjilali}
 url <- 'https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/13/TableS1.xlsx'
 download.file(url = url, destfile = "hypoxia/inputs/tabs1_rnaseq_res.xlsx")
 rnaseq_oxreg <- readxl::read_excel(path = "hypoxia/inputs/tabs1_rnaseq_res.xlsx", sheet = 1)%>%
@@ -1480,55 +1541,16 @@ hypoxic <- rnaseq_oxreg %>%
 aerobic <- rnaseq_oxreg %>%
   filter(oxygen.regulated == "aerobic")
 
-oxreg_int <- data.frame(intersection = c("DC1 induced", "DC1 repressed", "DC2 induced", "DC2 repressed", "total"),
-                        hypoxic= c(table(hypoxic$gene %in% dc1_hyp_up$ORF)[2],
-                                    table(hypoxic$gene %in% dc2_hyp_down$ORF)[2],
-                                    table(hypoxic$gene %in% dc1_hyp_up$ORF)[2],
-                                    table(hypoxic$gene %in% dc2_hyp_down$ORF)[2],
-                                    table(hypoxic$gene %in% c(dc1_hyp_up$ORF, dc1_hyp_down$ORF, dc2_hyp_down$ORF, dc2_hyp_up$ORF))[2]), 
-                        aerobic = c(table(aerobic$gene %in% dc1_hyp_up$ORF)[2],
-                                    table(aerobic$gene %in% dc1_hyp_down$ORF)[2],
-                                    table(aerobic$gene %in% dc2_hyp_up$ORF)[2],
-                                    table(aerobic$gene %in% dc2_hyp_down$ORF)[2],
-                                    table(aerobic$gene %in% c(dc1_hyp_up$ORF, dc1_hyp_down$ORF, dc2_hyp_down$ORF, dc2_hyp_up$ORF))[2]))
+oxreg_int <- data.frame(intersection = c("DC1 induced", "DC1 repressed"),
+                        hypoxic= c(table(hypoxic$gene %in% dc1_hyp_all_up$ORF)[2],
+                                   table(hypoxic$gene %in% dc1_hyp_all_down$ORF)[2]),
+                        aerobic = c(table(aerobic$gene %in% dc1_hyp_all_up$ORF)[2],
+                                    table(aerobic$gene %in% dc1_hyp_all_down$ORF)[2]))
 kable(oxreg_int, "latex", booktabs = T, col.names = c("Intersection", "Hypoxic (519 predicted)", "Aerobic (291 predicted)"),
-      caption = 'Intersection between oxygen regulation genes predicted by Bendjilali et al. 2017 and those predicted by this study.') %>%
+      caption = 'Consistent hypoxic metabolic remodelling detected by Bendjilali et al. 2017 and this study. Genes induced along diffusion component 1 are involved in the hypoxic reponse while those that are repressed are involved in aerobic metabolism.') %>%
   kable_styling(font_size = 9)
 ```
 
-### Overlap between diffusion components
-
-Most genes are differentially expressed in a single component. 
-However, some genes are differentially expressed in both diffusion components. 
-This likely indicates that these genes play a role in both the transcriptional remodeling that occurs at 30 mins, and in remodeling and maintenance that occur at longer time scales.
-
-```{r upset_plot_hypoxia}
-diffex_list <- list(DC1_induced = dc1_hyp_up$ORF,
-                    DC1_repressed = dc1_hyp_down$ORF,
-                    DC2_induced = dc2_hyp_up$ORF,
-                    DC2_repressed = dc2_hyp_down$ORF)
-upset_plt<- upset(fromList(diffex_list))
-```
-
-```{r dc_hyp_int}
-dc2_hyp_in_dc1_hyp <- dc2_hyp[dc2_hyp$ORF %in% dc1_hyp$ORF, ] 
-
-dc1_hyp_in_dc2_hyp <- dc1_hyp[dc1_hyp$ORF %in% dc2_hyp$ORF, ]
-dc1_hyp_in_dc2_hyp <- dc1_hyp_in_dc2_hyp[order(match(dc1_hyp_in_dc2_hyp$ORF, dc2_hyp_in_dc1_hyp$ORF)), ]
-stopifnot(all.equal(dc1_hyp_in_dc2_hyp$ORF, dc2_hyp_in_dc1_hyp$ORF))
-
-dc_hyp_int <- data.frame(dc1_hyp = dc1_hyp_in_dc2_hyp$logFC, dc2_hyp = dc2_hyp_in_dc1_hyp$logFC, ORF = dc2_hyp_in_dc1_hyp$ORF)
-# lm(dc1_hyp ~ dc2_hyp, data = dc_hyp_int)
-dc_hyp_int_plt <- ggplot(dc_hyp_int, aes(x = dc1_hyp, y = dc2_hyp, label = ORF)) +
-  geom_point(alpha = .05) +
-  xlim(c(-40, 41)) + ylim(c(-40, 41)) + 
-  labs(x = "Log2FC DC1", y = "log2FC DC2") +
-  theme_minimal()
-```
-
-```{r, fig.height=3, fig.cap="Some genes are expressed in diffusion component (DC) 1 and DC2. **A** Upset plot showing intersections of genes that are significantly induced and repressed in DC1 and DC2. The majority of genes are significantly differentially expressed in a single diffusion component. **B** Scatter plot of log2FC values for genes are significantly differentially expressed along both diffusion components. Color is fully saturated when 20 points overlap."}
-plot_grid(as.grob(upset_plt), dc_hyp_int_plt, ncol = 2, labels = c("A", "B"))
-```
 
 # Discussion
 
@@ -2238,7 +2260,6 @@ dc_top_enrich_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_by = "ava",
 dc_top_enrich_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava", show_genes = F)
 ```
 
-
 ```{r test, eval = F, include = F, eval = F}
 gene <- 'YPR065W' # ROX1
 gene <- 'YMR070W' # MOT3
@@ -2262,8 +2283,6 @@ ggplot(dc, aes(y = Y, x = DC2)) +
   geom_smooth(method='lm')
 
 ```
-
-
 
 ```{r, eval = F}
 tmp <- ggplot(dc17, aes(x = DC2, y = DC3, color = brix, label = ava_id)) +
@@ -2306,4 +2325,14 @@ ggplotly(p)
 # DC6: early ferm
 # DC7: early ferm
 
+```
+
+## hypoxia
+
+```{r upsetplothypoxia, fig.cap="Upset plot showing intersections of genes that are significantly induced and repressed in DC1 and DC2 during hypoxia. The majority of genes are significantly differentially expressed in a single diffusion component."}
+diffex_list <- list(DC1_induced = dc1_hyp_up$ORF,
+                    DC1_repressed = dc1_hyp_down$ORF,
+                    DC2_induced = dc2_hyp_up$ORF,
+                    DC2_repressed = dc2_hyp_down$ORF)
+upset(fromList(diffex_list))
 ```
