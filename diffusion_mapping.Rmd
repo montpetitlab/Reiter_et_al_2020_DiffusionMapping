@@ -1,5 +1,5 @@
 ---
-title: "Diffusion mapping reveals vineyard-site specific fermentation trajectories"
+title: "Mapping trajectories of global shifts in gene expression"
 always_allow_html: yes
 author: 
 - Taylor Reiter
@@ -20,7 +20,7 @@ header-includes:
 - \newcommand{\beginsupplement}{\setcounter{table}{0}  \renewcommand{\thetable}{S\arabic{table}}
   \setcounter{figure}{0} \renewcommand{\thefigure}{S\arabic{figure}}}
 - \usepackage[font={small,it}, labelfont={bf}]{caption}
-- \usepackage{setspace}\doublespacing
+- \usepackage{setspace}\singlespacing
 keep_tex: yes
 output:
   bookdown::pdf_document2:
@@ -64,7 +64,7 @@ set.seed(1)
 ```{r diffusion_mapping_functions}
 ## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
 ## standardize columns func
-norm.mat <- function(mat){
+norm_mat <- function(mat){
   ms <- apply(mat, 2, function(col) (col - mean(col)) / sd(col))
   ms
 }
@@ -125,7 +125,13 @@ orf_to_common <- function(keys){
                                   keytype="ORF")
   return(common)
 }
-
+orf_to_description <- function(keys){
+  description <- AnnotationDbi::select(org.Sc.sgd.db::org.Sc.sgd.db,
+                                  keys = keys,
+                                  columns=c("DESCRIPTION"),
+                                  keytype="ORF")
+  return(description)
+}
 lm_eqn <- function(df, y, x){
     formula = as.formula(sprintf('%s ~ %s', y, x))
     m <- lm(formula, data=df);
@@ -534,51 +540,64 @@ or  = "#DDDDDD" # pale grey
 
 # Introduction
 
-<!-- This could be the introduction or it could be the first section of the results...it's going to depend on the target audience. -->
+During wine fermentation, *Saccharomyces cerevisiae* transforms grape must into wine by metabolizing sugars and other nutrients to ethanol and aroma compounds.
+*S. cerevisiae* dynamically responds to its environment throughout this process by remodeling its transcriptome to accommodate decreasing nutrient availability and rising ethanol concentrations (reviewed in @bisson2019gene).
+*S. cerevisiae's* core gene expression program is consistent across diverse fermentation conditions [@rossignol2003genome; @marks2008dynamics; @rossouw2012effect] (CITE BRIX PAPER).
+Yet, overexpression of some genes leads to quantifiable differences in wine outcomes [@rossouw2008linking], and differences in nutrient availability in grape must (e.g. nitrogen concentration) leads to changes in aroma compounds like esters and higher alcohols [@carrau2008production].
+The chemical composition of grape must interacts with *S. cerevisiae* to determine primary fermentation outcomes.
 
-Gene expression is a dynamic process whereby a cell adjusts to its internal and external environment. 
-While some biological processes occur in steady state, many are dynamic and require observation across time to understand the full complement of transcriptomic responses elicited by a stimuli.
-In particular, environmental conditions that result in a global shift in gene expression (e.g. onset of hypoxia) require time series sampling to capture continuous metabolic remodelling.
-Time series gene expression surveys have been successfully applied to these types of problems [@bendjilali2017time] (CITE brix paper). 
-In these experiments, a single conditions was assayed to understand the ubiquitous global shifts in gene expression. 
-Expanding such inquiries to multiple groups raises data analysis problems.
-
-Time series profiles of cell populations rely on synchronicity between cells to identify coordinated shifts in gene expression.
-Synchronicity is difficult to maintain across groups of cell populations exposed to different treatments.
-Experimental techniques have been developed to resynchronize groups of cells, for example by arresting the cell cylce in the same phase across groups [@spellman1998comprehensive].
-However these experimental approaches are not appropriate across broad experimental designs and may not be completely effective at re-synchronization [@lu2004statistical; @bar2012studying]. 
-
-Identifying differences between groups that are separate from or in excess to the dominant and ubiquitous global shift in gene expression is another challenge.
-Structure in gene expression exists at different scales [@moon2019visualizing], but dominant shifts experienced by all groups may overpower weaker but biologically important signals.
-In experimental designs where groups undergo the same primary shift in metabolism but also react in subtly different ways, it's important to isolate and understand the transcriptomic context of those differences.
-<!-- Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts.  -->
-
-These computational problems have been addressed in part in by single cell RNA-sequencing analysis of differentiating cells.
-As cells differentiate during development, absolute time may not reflect the extent of differentiation in an individual cell. 
+Grape must is chemically diverse and is a reflection of biotic and abiotic pressures encountered by a grapevine during a growing season.
+Remarkably, wines produced under similar vinification conditions from genetically identical grapes grown in different locations have diverse sensory outcomes [@cantu2020investigating], many of which are reproducible across years (e.g. vintages) [@roullier2014grape].
+This phenomenon is referred to as *terroir* -- the environmental and anthropomorphic factors that contribute to wine outcomes.
+After observing diverse sensory outcomes in wines where the only consistent variable between fermentations was vineyard location [@cantu2020investigating], we sought to uncover the quantifiable contribution of vineyard site to wine outcomes by using *S. cerevisiae* gene expression as a biosensor to detect differences between fermentations.
+As a model organism used for basic science and biotechnology, the *S. cerevisiae* genome and transcriptome is well annotated and well studied in diverse environments, including wine [@cherry1998sgd; @gasch2000genomic; @causton2001remodeling; @rossignol2003genome; @marks2008dynamics; @rossouw2012effect; @bendjilali2017time]. 
+Given this resource, high throughput gene expression surveys (microarray, RNA sequencing) have been used for many wine studies and revealed the causes of stuck and sluggish fermentations [@duc2017set], the trigger for entry into stationary phase [@rossignol2003genome; @marks2008dynamics], and the impact of inter-species interactions on *S. cerevisiae* metabolism in wine [@tronchoni2017early; @curiel2017different; @alonso2019dominance].
+However, after performing time series RNA sequencing on many fermentations with the aim of using differential expression to identify differences in fermentations from different vineyard sites, we found that using standard analysis methods we only identified the dominant and consistent global shift in gene expression across fermentations and not gene expression patterns that differentiate fermentations from different vineyard sites [@conesa2006masigpro; @robinson2010edger; @love2014moderated; @limma2015; @jung2017timesvector; @abu2018clust].
+Our primary challenge arose because fermentations proceeded at different rates, leading to asynchronous biological progression among sequenced samples with respect to absolute time. 
+Samples need to be at the same stage of fermentation to be compared or else many genes will appear falsely differentially expressed [@rossouw2012effect; @bar2012studying].
+This is a common problem in time series experiments with multiple groups and in some experimental systems there are strategies to combat this issue [@bar2012studying].
+For example, in experiments that study the cell cycle, inhibitors arrest the cell cycle at the same stage across groups thereby enabling comparisons [@spellman1998comprehensive].
+This experimental approach is not applicable to wine fermentations where nutrient availability is more important than stage of the cell cycle [@bisson2019gene].
+ 
+However, a similar problem has been addressed for analysis of single cell RNA sequencing from differentiating cells.
+As cells differentiate during development, absolute time may not reflect the extent of differentiation in an individual cell.
 Pseudotime analysis reorders asynchronous cells from absolute time to stage in differentiation relative to other cells undergoing the same process.
 In particular, diffusion maps have been used to reorder asynchronously shifted cells because they preserve relationships between samples [@destiny2015].
 
 Diffusion mapping is a manifold learning technique that uses information from the *k* most similar samples to construct non-linear composites of the major sources of variation among samples  [@coifman2005geometric; @coifman2006diffusion].
-Dimensionality reduction algorithms like principal component analysis and t-distributed stochastic neighbor embedding (tSNE) are commonly applied to sequencing data to identify sources of variation [@way2020compressing; @moon2019visualizing].
+Dimensionality reduction algorithms like principal component analysis (PCA) and t-distributed stochastic neighbor embedding (tSNE) are commonly applied to sequencing data to identify sources of variation [@way2020compressing; @moon2019visualizing].
 Diffusion mapping has strengths over these methods because it is non-linear and robust to the "horseshoe effect" (unlike PCA) [@diaconis2008horseshoes], preserves distances between samples (unlike tSNE), and is insensitive to sampling density.
+As a dimensionality reduction algorithm, diffusion maps extract latent variables that represent composite sources of variation between samples.
+These latent variables are unmeasured but are inferred from relationships in the sequencing data.
 
-As a dimensionality reduction algorithm, diffusion maps extract latent variables that represent composite sources of variation between samples. 
-Latent variables are unmeasured but are inferred from relationships in the sequencing data. 
-
-Here, we use diffusion maps to analyze bulk time-series RNA-sequencing of global shifts of *Saccharomyces cerevisiae* metabolism during wine fermentation and hypoxia.
+Here, we use diffusion maps to analyze bulk time-series RNA-sequencing of global shifts of *S. cerevisiae* metabolism during wine fermentation.
 We use diffusion maps to resynchronize gene expression across treatment groups and to extract latent variables that represent the dominant sources of structure in the data sets.
-Diffusion maps *per se* provides no suggestion of the underlying genes that lead to separation of samples along latent variables.
-We apply differential expression along each diffusion component to determine the genes responsible for separation among samples.
-We find that the primary diffussion component represents the dominant global shift in gene expression experienced by the majority of groups, while subsequent diffusion components represent subtler differences between groups. 
+Diffusion maps *per se* provide no suggestion of the underlying genes that lead to separation of samples along latent variables.
+We apply differential expression along each latent variable to determine the genes responsible for separation among samples.
+We find that the primary latent variable represents the dominant global shift in gene expression experienced by the majority of fermentations, while subsequent diffusion components represent subtler differences between fermentations that may reflect differences in the grape musts and underlie variable sensory outcomes.
+
+This method is not exclusively useful for the analysis of RNA sequencing from wine fermentations and can be applied in other systems where asynchronous progression of groups with respect to sampling time masks true differences between groups.
+We additionally apply this method to time series RNA sequencing of hypoxia onset among *S. cerevisiae* transcription factor knockout mutants.
+We show that, as in wine, the first latent variable captures the dominant global shift in gene expression that occurs when yeast transitions from aerobic to anaerobic metabolism, and that subsequent diffusion components reveal similarities in gene expression disruption among knockouts that indicate shared regulatory programs among transcription factors.
+Our method enables analysis of diverse asynchronous time series gene expression data, revealing global shifts and subtle differences among groups.
+
+
+<!-- Identifying differences between groups that are separate from or in excess to the dominant and ubiquitous global shift in gene expression is another challenge. -->
+<!-- Structure in gene expression exists at different scales [@moon2019visualizing], but dominant shifts experienced by all groups may overpower weaker but biologically important signals. -->
+<!-- In experimental designs where groups undergo the same primary shift in metabolism but also react in subtly different ways, it's important to isolate and understand the transcriptomic context of those differences. -->
+<!-- <!-- Further, while coordinated shifts in gene expression may occur across groups, sometimes there are additional differences between groups that can be difficult to identify when they are masked by global shifts.  -->
+
+
+
 
 # Results
 
 Diffusion maps extract latent variables that represent non-linear composites of genes that vary between samples. 
 We refer to these latent variables as *diffusion components*.
-Within each diffusion component, each sample is reprsented by a number and smpales that have similar gene expression profiles for genes summaried in that component are closer along the diffusion component.
+Within each diffusion component, each sample is represented by a number and samples that have similar gene expression profiles for genes summarized in that component are closer along the diffusion component.
 Samples at the origin of a diffusion component do not vary along that component.
-Differential expression along a diffusion component reveals the genes that contibute most to similarity among samples. 
-Diffusion components capture diminishing structure among samples with the first accounting for the largest variation among all samples.
+Differential expression along a diffusion component reveals the genes that contribute most to similarity among samples. 
+Diffusion components capture diminishing structure among samples with the first diffusion component accounting for the largest variation among all samples.
 
 
 ```{r metadata}
@@ -605,7 +624,7 @@ m17 <- t(m17)
 ## build diffusion map
 ## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
 
-nm <- m17 %>% norm.mat()          # normalize
+nm <- m17 %>% norm_mat()          # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
   threshold(., top_k = 10)      # make affinity matrix
@@ -668,7 +687,7 @@ m19 <- t(m19)                                             # transpose counts
 ## build diffusion map
 ## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
 
-nm <- m19 %>% norm.mat()        # normalize
+nm <- m19 %>% norm_mat()        # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
   threshold(., top_k = 10)      # make affinity matrix
@@ -752,24 +771,51 @@ dc10_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 11) # Test "DC10" coefficient
 
 ## Diffusion mapping captures the global shift of gene expression during primary fermentation
 
-During wine fermentation, *S. cerevisiae* encounters overlapping stresses such as low pH and high sugar concentration in early fermentation give way to nutrient limitation and high ethanol concentration.
-This dynamic environment leads to transcriptome remodelling throughout fermentation that allows *S. cerevisiae* to survive and dominant the transformation of grape must into wine [@rossignol2003genome; @marks2008dynamics] (CITE BRIX PAPER).
-While *S. cerevsisiae* gene expression during fermentation is consistent across diverse fermentation conditions (CITE BRIX PAPER), the chemical composition of grape must and wine is variable.
-Yet wines from the same vineyard site often have similar outcomes across multiple years (e.g. vintages) [@roullier2014grape; @cantu2020investigating].
-This phenomenon is referred to as *terroir* -- the environmental and anthropomorphic factors contribute that to wine outcomes. 
-We sought to uncover the quantifiable contribution of vineyard site to wine outcomes by using *S. cerevisiae* gene expression as a biosensor of differences between fermentations.
-*S. cerevisiae* is one of the most well studied and annotated model organisms and so we took advantage of that information to uncover differences between fermentations from different vineyards.
-We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon over two vintages (**Figure \@ref(fig:fig1)**).
-The initial grape must varied in paramters like initial nitrogen, pH, malic acid, tartaric acid, non-*Saccharomyces* microbial profile, and elemental profile while the final wines differed in volatile profiles and sensory outcomes (CITE sig of site paper).
+We performed 60 inoculated primary fermentations of genetically similar Pinot noir grapes grown in 15 vineyards in California and Oregon over two vintages (**Figure \@ref(fig:fig1)A**).
+The initial grape must varied in parameters like initial nitrogen, pH, malic acid, tartaric acid, non-*Saccharomyces* microbial profile, and elemental profile while the final wines differed in volatile profiles and sensory outcomes (CITE sig of site paper).
 Even still, *S. cerevisiae* had a consistent gene expression profile across fermentations from different vineyards and vintages (CITE brix paper).
 Given the variable input media, we aimed to understand how fermentations differed, and whether those differences were related to genes known to impact the sensory outcome of wine [@cordente2012flavour].
-We profiled each fermentation using time-course RNA sequencing and used *S. cerevisiae* gene expression as an indicator of similarities and difference across fermentation.
-In the 2017 vintage, we took samples corresponding approximately to the early log phase (16 hours), late log phase (40 hours), stationary phase (64, 88 hours), and end of fermentation (112 hours). 
+We profiled each fermentation using time-course RNA sequencing and used *S. cerevisiae* gene expression as an indicator of similarities and difference across fermentations.
+In the 2017 vintage, we took samples corresponding approximately to the early log phase (16 hours), late log phase (40 hours), stationary phase (64, 88 hours), and end of fermentation (112 hours) (**Figure \@ref(fig:fig1)B**). 
 In the 2019 vintage, we shifted sampling forward to capture cellular adaptation after inoculation (2, 6 hours) and reduced sampling later in fermentation (16, 64, and 112 hours).
-Fermentations progressed at different rates leading to asynchronous biological progression among samples with respect to absolute time (BRIX FIGURES).
+Fermentations progressed at different rates leading to asynchronous biological progression among samples with respect to absolute time (**Figure \@ref(fig:fig1)C**).
 
 ```{r map, eval = FALSE, fig.cap = "A. Map of vineyard site American Viticulture Areas. B. Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
 map <- include_graphics("figures/map_and_sampling.pdf") 
+```
+
+```{r brixplot}
+brix17 <- read_csv("../2020-pn-tmp/site_metadata/2017_fermentation_log.csv")
+brix19 <- read_csv("../2020-pn-tmp/site_metadata/2019_fermentation_log.csv") 
+brix <- rbind(brix17, brix19) %>%
+  filter(!is.na(hours_post_innoculation))%>%
+  dplyr::select(-time) %>%
+  pivot_longer(cols = A:D, names_to = "tank", values_to = "brix") %>%
+  mutate(ava = gsub("[123]", "", ava_id))
+brix_plot <- ggplot(brix, aes(x = brix, y = hours_post_innoculation, color = ava_id, shape = tank)) +
+  geom_line(alpha = .6) +
+  facet_wrap(~year, ncol = 1, nrow = 2) +
+  labs(y = "time (hours)", color = "vineyard", shape = "tank") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        strip.text.x = element_text(size = 14)) +
+  # theme(legend.position = "bottom",
+  #       axis.text.x = element_text(angle = 90),
+  #       legend.title = element_text(size=12, face = "bold"),
+  #       legend.text = element_text(size = 9, colour = "black"),
+  #       legend.key=element_blank(),
+  #       strip.text.x = element_text(size = 12, face = "bold"),
+  #       strip.background = element_blank(),
+  #       panel.background = element_blank(), 
+  #       panel.grid =  element_blank(),
+  #       panel.border = element_rect(colour = "black", fill = NA, size = 1.2)) +
+  scale_color_manual(values = c(SRH1 = srh, SMV2 = smv, SMV1 = smv, AS1 = as, 
+                                AS2 = as, SNC1 = snc, SNC2 = snc, CRN1 = crn, 
+                                RRV1 = rrv, RRV2 = rrv, RRV3 = rrv, AV1 = av,
+                                AV2 = av, OR1 = or, OR2 = or),
+                     breaks = c('OR1', 'OR2', 'AV1', 'AV2', 'RRV1', 'RRV2', 'RRV3', 'SNC1', 
+                                'SNC2', 'CRN1', 'AS1', 'AS2', 'SMV1', 'SMV2','SRH1')) +
+  scale_shape(guide = 'none')
 ```
 
 ```{r diffex_brix_17}
@@ -857,28 +903,36 @@ p19 <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
         axis.title.y = element_blank()) +
   ggtitle("2019") 
 
-ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 1, nrow =2)
+# ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 1, nrow =2)
+ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 2, nrow = 1)
 ```
 
-```{r fig1, fig.cap = "**A** Map of vineyard site American Viticulture Areas. **B** Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation. **C, D** Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in the 2017 vintage and the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **E** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
-include_graphics("figures/map_and_sampling2.pdf") 
+```{r fig1, fig.cap = "**A** Map of vineyard site American Viticulture Areas. **B** Primary fermentation sampling time points for 2017 and 2019 vintages. Times are shown in hours and are relative to inoculation."}
+include_graphics("figures/fig1.pdf") 
 ```
 
-When we apply diffusion mapping to wine fermentation, we find that diffusion component 1 captures the dominant metabolic transition of *S. cerevisiae* during fermentation and re-orders samples according to stage of fermentation (**Figure \@ref(fig:fig1)C-D**).
-While we used different sampling schemes in the 2017 and 2019 vintages, samples are ordered by decreasing brix in both vintages.
+When we applied diffusion mapping to wine fermentation, we found that diffusion component 1 captured the dominant metabolic transition of *S. cerevisiae* during fermentation and re-ordered samples according to stage of fermentation (**Figure \@ref(fig:fig2)A-B**).
+While we used different sampling schemes in the 2017 and 2019 vintages, samples were ordered by decreasing brix in both vintages.
 Brix is a proxy for sugar concentration during fermentation, and sugar concentrations continuously drop as *S. cerevisiae* ferments sugar into ethanol.
 
 In a previous investigation, we used brix to perform continuous differential expression and identified the ubiquitous transcriptome response of *S. cerevisiae* to Pinot noir fermentation (CITE BRIX PAPER).
-To test whether diffusion mapping captures the genes known to change expression during fermentation, we performed differential expression over the diffusion component and compared the log~2~ fold change values of genes against those obtained with differential expression using brix.
-Log~2~ fold change is strongly correlated between both methods of differential expression (**Figure \@ref(fig:fig1)E, Figure \@ref(fig:upsetgrid)**), indicating that the primary diffusion component captures the dominant global shift in gene expression during fermentation.
+To test whether diffusion mapping captured the genes known to change expression during fermentation, we performed differential expression over diffusion component 1 and compared the log~2~ fold change values of genes against those obtained with differential expression using brix.
+Log~2~ fold change was strongly correlated between both methods of differential expression (**Figure \@ref(fig:fig2)C, Figure \@ref(fig:upsetgrid)**), indicating that the primary diffusion component captured the dominant global shift in gene expression during fermentation.
 
-## Metabolic remodelling occurs throughout fermentation
+```{r fig2, fig.cap = "**A, B)** Diffusion component 1 captures the metabolic transition that occurs as brix decreases during fermentation. The same transition occurs in the 2017 vintage and the 2019 vintage. Each point represents a sample from one time from one fermentation. Points that are closer along the x axis are more similar. The y axis is jittered to allow all points to be visualized. Points are colored by brix, where brix = 0 indicates end of fermentation. **C** High concordance between differentially expressed genes in diffusion component 1 and genes that are differentially expressed as brix decreases."}
+knitr::include_graphics("figures/fig2.pdf")
+```
+
+## Metabolic remodeling occurs throughout fermentation
 
 We next explored subsequent diffusion components to determine the non-dominant drivers of structure among groups (**Figure \@ref(fig:allDCs2017)**, **Figure \@ref(fig:allDCs2019)**).
-While progression through fermentation is the primary driver of separation among samples, consistent transitions in early fermentation and late fermentation drive secondary structure among samples.
-Diffusion components capture cellular remodelling in early fermentation, entry into stationary phase, and starvation during late fermentation.
+While progression through fermentation was the primary driver of separation among samples, consistent transitions in early fermentation and late fermentation drove secondary structure among samples.
+Diffusion components captured cellular remodeling in early fermentation, entry into stationary phase, and starvation during late fermentation.
 
-Incorporate **Table  \@ref(tab:numdiffex)**: In general, there are diminishing number of differentially expressed genes across diffusion components indicating increasingly subtle differences between samples.
+In general, the number of differentially expressed genes diminished across diffusion components indicating increasingly subtle differences between samples (**Table  \@ref(tab:numdiffex)**).
+This, combined with lower diffusion components capturing more structure across samples, allowed us to see what stages of fermentation undergo the most gene expression remodeling. 
+In the 2019 vintage, we found metabolic remodeling during early fermentation accounted for more variation than at the end of fermentation given that diffusion components 2 and 3 differentiated early fermentation samples while diffusion component 4, 6, and 8 differentiated late fermentation samples.
+
 
 ```{r numdiffex}
 num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4", 
@@ -932,18 +986,40 @@ kable(num_diffex, "latex", booktabs = T, col.names = c("diffusion component", "i
   add_header_above(c(" " = 1, "2017" = 2, "2019" = 2), align = "l", escape = F)
 ```
 
+Diffusion component two captured the transition from 2 to 6 hours of fermentation, while the diffusion component 3 capture the transition from 6 to 16 hours of fermentation.
+Along diffusion component 2, arginine biosynthetic process was enriched in genes that were induced in the 2 hour samples (*ARG1*, *ARG3*, *ARG5,6*, *ARG8*).
+Arginine is one of the most abundant amino acids during fermentation and is used heavily in protein biosynthesis [@crepin2017management].
+Arginine consumption was found to provide all anabolic requirements for *S. cerevisiae* during wine fermentation [@rollero2019comparison], so induction of these biosynthetic genes in early fermentation may be involved in early cellular adaptation to the wine environment.
+Interestingly, four of the 16 genes induced in 2 hour samples have no known function.
+Given the few genes induced 2 hour samples and enrichment of arginine biosynthesis, these genes may play a related role in arginine metabolism.
 
-During the 2019 vintage, we sampled three times in early fermentation to capture the gene expression underlying the metabolic remodelling of *S. cerevisiae* during adaptation to the wine environment (high sugar, low pH).
-Metabolic restructuring during early fermentation is bigger than transitions at end of fermentation.
-Diffusion components 2 and 3 both differentiate early fermentation samples (2 hours, 6 hours, and 16 hours post-inoculation) while diffusion component 4, 6, and 8 differentiate late fermentation samples (64 hours, 112 hours post-inoculation). 
+By 6 hours, gene expression supports a transition to anaerobic metabolism.
+We detected induction of anaerobic translation elongation factor eiF-5A, *ANB1*.
+*ANB1* is optimally expressed below 0.5 umol/L O~2~ [@kwast1998oxygen], likely indicating a drop in fermentation oxygen by this time.
+Glycolysis/gluconeogenesis was enriched among genes induced in the six-hour samples, potentially indicating that carbon dioxide production began shielding fermentation from oxygen by 6 hours after inoculation.
+Cell wall processes are also induced at 6 hours; indeed, *TIR1-4*, which encode cell wall mannoproteins [@abramova2001reciprocal], were four of the top five genes induced in 6 hour samples.*TIR1*, *TIR3*, and *TIR4* are required for anaerobic growth [@abramova2001reciprocal].
 
-Notes about biology of transitions.
+Diffusion component 3 captured the transition from 6 to 16 hours of fermentation.
+We observed continued induction of cell while remodeling proteins, suggesting these processes play a pivotal role throughout early fermentation.
+In addition to *TIR1-4*, *DAN1* was induced in 16 hour samples along with many *PAU* genes (*PAU2*, *PAU3*, *PAU4*, *PAU5*, *PAU7*, *PAU8*, *PAU10*, *PAU11*, *PAU12*, *PAU15*, *PAU16*, *PAU17*, *PAU19*, *PAU20*, *PAU23*, *PAU24*).
+Many biological processes, cellular compartments, and molecular functions were enriched in the 293 genes that were induced in the 16 hour samples (FIGURE), which is consistent with the early log phase of growth.
+Entry into log phase of growth is likely supported by ribosomal remodeling that begins at 6 hours after inoculation.
+Of 32 genes induced at 6 hours compared to 16 hours, 13 were involved in ribosomal processes.
 
-+ 2hr samples are more similar to 16 hours samples on diffusion component 2, which explains more of the variation among all samples.
+Diffusion component 4 separated the 64 hour samples from the 112 hour samples.
+This separation was likely driven by a decreased availability of preferred nutrients at 112 hours.
+In the 64 hour samples, transmembrane transport, including amino acid and polyamine transport, were enriched in genes that were induced in the 64 hour samples. 
+Two of the top induced genes (*DUR3* and *DAL5*), are involved in allantoin metabolism, a non-preferred nitrogen source.
+induction of these genes at 64 hours likely indicates relief of nitrogen could tablet light repression consistent with decreasing nitrogen concentrations.
+Conversely, *HXT13* and *MAN2*  for the top induced genes in the 112 our samples, along with *HXT17*. 
+These *HXT* genes are mannitol transporters [@Jordan2016] while and *MAN2* encodes mannitol dehydrogenase. 
+Mannitol is produced by fructophilic acetic acid bacteria like *Lactobacillus kunkeii* [@bisson2017two], and expression of these genes likely signals that mannitol was in the media and that no preferred sugars were left.
 
-Along DC2, genes *TIR1*, *TIR2*, *TIR3*, *DAN1*, and *TIR4* are the top 5 repressed genes, indicating gene expression for cell wall remodelling is highest at 16 hrs post inoculation.
-Pathways like ribosome biogenesis, RNA transport, RNA degradation, and basal transcription factors are induced along DC2, while biosynthesis of amino acids, carbon metabolism, and steroid biosythesis are enriched in repressed genes (**Figure \@ref(fig:DC2viz2019)**), reflecting the stressful transition yeast make upon inoculation.
-
+Unlike the 2019 vintage, we did not observe clear delineations among samples taken at the same time in late fermentation in the 2017 vintage.
+While we detected dominant drivers of variation among samples (e.g. global shift in gene expression during primary fermentation), we think that lack of grouping among samples may indicate a data quality issue.
+All gene expression data are inherently noisey [@hansen2011sequencing].
+With advances in sequencing technology, we sequenced the 2019 vintage with unique molecular identifier (UMI) barcodes and thus were better able to demultiplex sequencing lanes and remove PCR duplicates. 
+While diffusion mapping faithfully recapitulates the dominant metabolic processes in fermentation, we are skeptical that noise in the data interferes with our ability to draw further conclusions from higher diffusion components in the 2017 vintage.
 
 ```{r v2019dc2dc3, fig.height = 5, fig.cap = "Metabolic transitions in early and late fermentation separate groups. **A, B** Diffusion components 2 and 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples for three clusters. **C, D** Diffusion componenst 4 and 6 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples separate by time in fermentation and vineyard site region."}
 by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
@@ -965,7 +1041,7 @@ by_hour_46 <- ggplot(dc19, aes(x = DC4, y = DC6, color = factor(hr, levels = c("
   theme_minimal() +
   theme(plot.title = element_text(hjust = 0.5))
 
-by_ava_46 <- ggplot(dc19, aes(x = DC4, y = DC6, color = ava, label = ava)) +
+by_ava_46 <- ggplot(dc19, aes(x = DC4, y = DC6, color = ava, label = ava_id)) +
   geom_point(alpha = .6, size = 2) +
   theme_minimal() +
   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
@@ -980,30 +1056,331 @@ ggarrange(ggarrange(by_hour, by_hour_46, labels = c("A", "C"), legend = "bottom"
 
 ```
 
-+ Early fermentation separation:
-  + SMV sites/OR sites doing their own thing
-+ End of fermentation separation
-+ 2017 quality discussion: 
 
-Unlike the 2019 vintage, we do not observe clear delineations among samples taken at the same time in late fermentation in the 2017 vintage.
-While we detect dominant drives of variation among samples, e.g. gene expression remodelling during primary fermentation and transition from stationary phase to end of fermentation, we think that lack of grouping among samples may be indicative of a data quality issue.
-All gene expression data are inherently noisey (CITE).
-With advances in sequencing technology, we sequenced the 2019 vintage with unique molecular identifier (UMI) barcodes and thus were better able to demultiplex sequencing lanes and remove PCR duplicates. 
-While diffusion mapping faithfully recapitulates the dominant metabolic processes in fermentation, we are skeptical that noise in the data interferes with our ability to draw further conclusions from higher diffusion components.
+## Vineyard site differentiates samples within fermentation stages
 
-## Vineyard site differentiates samples within stages in fermentations
+Along diffusion components that separated stages of fermentation, we detected outliers that may indicate fundamentally different metabolic strategies during those stages of fermentation.
 
-The extremes of each diffusion component represent samples with the most differentiated transcriptome for genes in that component.
+In the 2017 vintage, samples taken at 40 hours from fermentations from SMV1, SMV2, and OR1 were shifted toward the 16 hour samples indicating a different metabolic strategy in fermentations from these vineyards.
+Expression of genes involved in mannitol at the end of fermentation was highest for the SMV sites, likely indicating higher concentrations of mannitol in these fermentations.
+This, combined with an altered metabolic program in early fermentation, may be a signature of [GAR+] prion state induced by acetic acid produced by *L. kunkeei* [@bisson2017two] (CITE BRIX PAPER).
+We were not able to test for this prion state in the 2017 vintage and did not detect it in the 2019 vintage (CITE BRIX PAPER), so altered core metabolic trajectory may be caused by other factors.
 
-+ DC2/DC3: SRH and OR are early outliers. We expect few differences given tight timeline of sampling, but cells from these fermentations may be at a different point in fermentation
-+ DC4: 64-112 OR, SNC, and AS are in the middle instead of separating with the other 64/112 hour samples. More moderate fermentation behavior? (see below)
-+ DC5: SEPARATION OF 2 HOURS SAMPLES - vitamins, cell wall, glycosyl. Look at microbiome of the sites on either side of the origin.
-+ DC6: 64 hour OR samples. Less fatty acid metabolism but also 3 of the genes are nitrogen (PUT1, PUT2, DAL5). DC6 correlates with initial NOPA & NH3 -- 35%. Check nitrogen additions.
-+ DC7: 16 hour samples, SMV vs. SRH. ADH4 SMV FUSEL ALCOHOL PRODUCTION. Very few differences bewteen these samples.
-  + What could remediate this? look at redox balance etc. for what make ADH3 more active.
-+ DC8: 112hr SNC and AS CELLULAR REPSONSE TO HYDROGEN PEROXIDE (check genes)
-+ DC9: 6, 16hr samples; SMV. Phosphate (by eye), cell wall/extracellular region
-+ DC10: 6, 2hr Cell wall remodelling; malic acid; heme binding; tetrapyrole binding
+In the 2019 vintage, 6 hour, and to a lesser extent 2 hour, samples from SRH1 do not cluster with other samples from these time points (**Figure \@ref(fig:v2019dc2dc3)**).
+The SRH1 6 hour samples were shifted toward other 16 hour samples, potentially indicating faster cellular adaptation to the wine environment.
+In support of this, fermentations from SRH1 initially decreased in brix faster than other sites in both the 2017 and 2019 vintages.
+In the future, closer inspection of the initial chemical and microbiological state of SRH1 grape musts relative to grape musts from other sites may reveal the differences that lead to faster onset of fermentation.
+
+We also observed outliers in the fermentation.
+Along diffusion component 4, 64 hour samples from OR1 and OR2 were shifted toward the 112 hour cluster (**Figure \@ref(fig:v2019dc2dc3)**), indicating attenuated expression of genes induced in other 64 hour samples.
+Indeed, while expression of some genes at 64 hours matches that of other fermentations (e.g. *DUR3*, *DAL5* involved in metabolism of alternative nitrogen source allantoin), expression of some genes (e.g. *THI72*, *THI80*, involved in thiamine metabolism) was lower than for many samples at the extrema of diffusion component 4 (**Figure \@ref(fig:or1)**).
+This may indicate shared nutrient limitation that produces gene expression patterns similar to the end of fermentation in fermentations from the OR region.
+Similarly, 112 hour samples from SNC1 and AS2 were shifted toward the 64 hour cluster (**Figure \@ref(fig:v2019dc2dc3)**).
+
+```{r or1, fig.cap = "Samples from OR1 and OR2 taken at 64 hours post-inoculation do not cluster along diffusion component 4 with other 64 hour samples. While expression of some genes like *DUR3* and *DAL5* is similar between OR samples and other samples, expression of other genes like *THI72* and *THI80* is relatively lower in OR samples."}
+gene <- 'YOR143C' # thi80
+Y <- dc_y19$E[gene, ]
+dc19$Y = Y
+thi80 <- ggplot(dc19, aes(y = Y, x = DC4, color = ava)) +
+  geom_smooth(method='lm', color = "grey", se = F, alpha = .5) +
+  geom_point(alpha = .9) +
+  ggtitle("THI80") +
+  theme_minimal() +
+  labs(y = "norm log expression value") +
+  theme(legend.position = "bottom",
+        axis.title.y = element_blank(), 
+        legend.title = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 90, vjust = .5),
+        plot.title = element_text(size=12, face = "bold.italic", hjust = .5)) +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+
+gene <- 'YOR192C' # thi72
+Y <- dc_y19$E[gene, ]
+dc19$Y = Y
+thi72 <- ggplot(dc19, aes(y = Y, x = DC4, color = ava)) +
+  geom_smooth(method='lm', color = "grey", se = F, alpha = .5) +
+  geom_point(alpha = .9) +
+  ggtitle("THI72") +
+  theme_minimal() +
+  labs(y = " ") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        axis.text.x = element_text(angle = 90, vjust = .5),
+        plot.title = element_text(size=12, face = "bold.italic", hjust = .5)) +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+
+gene <- 'YHL016C' # DUR3
+Y <- dc_y19$E[gene, ]
+dc19$Y = Y
+dur3 <- ggplot(dc19, aes(y = Y, x = DC4, color = ava)) +
+  geom_smooth(method='lm', color = "grey", se = F, alpha = .5) +
+  geom_point(alpha = .9) +
+  ggtitle("DUR3") +
+  theme_minimal() +
+  labs(y = "norm log expression value") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        axis.title.y = element_text(hjust = 4),
+        plot.title = element_text(size=12, face = "bold.italic", hjust = .5)) +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+gene <- 'YJR152W' # DAL5
+Y <- dc_y19$E[gene, ]
+dc19$Y = Y
+dal5 <- ggplot(dc19, aes(y = Y, x = DC4, color = ava)) +
+  geom_smooth(method='lm', color = "grey", se = F, alpha = .5) +
+  geom_point(alpha = .9) +
+  ggtitle("DAL5") +
+  theme_minimal() +
+  labs(y = "norm log expression value") +
+  theme(legend.position = "bottom",
+        legend.title = element_text(face = "bold"),
+        axis.title.y = element_blank(),
+        axis.title.x = element_blank(),
+        axis.text.x = element_blank(),
+        plot.title = element_text(size=12, face = "bold.italic", hjust = .5)) +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+
+ggarrange(dur3, dal5, thi72, thi80, ncol = 2, nrow = 2, common.legend = T, legend = "bottom")
+```
+
+The extremes of each diffusion components represent samples with the most differentiated transcriptome for genes in that component.
+Given that some higher diffusion components separated samples within a stage of fermentation, we used this information to determine vineyard-specific differences within a stage of fermentation.
+
+Samples taken at 2 hours separated along diffusion component 5 with samples from SMV1, SMV2, SRH1, AV2, and RRV3 separating to one extrema and samples from our RRV2, CRN1, SNC1, and AS2 separating to the other.
+While no genes were significantly induced among the latter group, 13 were induced in the former (**Table \@ref(tab:numdiffex)**).
+This set was enriched for vitamin metabolic process and cell wall (FIGURE).
+Given that co-culture experiments of wine fermentations have demonstrated that *S. cerevisiae* induces genes involved in cell wall remodeling and vitamin biosynthesis in response to the presence of non-*Saccharomyces* yeasts [@barbosa2015genomic; @kosel2017influence; @curiel2017different], we tested whether gene expression by non-*Saccharomyces* yeasts in 2 hour samples correlated with diffusion component 5.
+Total gene expression of *Hanseniaspora uvarum* correlated with diffusion component 5 (R^2^ = 0.49, p < 0.001) (**Figure \@ref(fig:DC2uvarum)**), suggesting the interactions with *H. uvarum* in early fermentation altered *S. cerevisiae* metabolism in some fermentations.
+This is consistent with the previous study that found that *S. cerevisiae* remodels its cell wall in the presence of *H. uvarum* at three hours post-inoculatio in wine fermentation [@curiel2017different].
+Interestingly, *PDC5* was also induced in fermentations with higher gene expression by *H. uvarum*.
+*PDC5* encodes one of three isoforms of pyruvate decarboxylase, an enzyme involved in the formation of flavor–active higher alcohols in wine via the Ehrlich pathway [@ter1998pyruvate].
+This suggests that the presence of *H. uvarum* may impact wine sensory outcomes.
+ 
+```{r DC2uvarum, fig.cap = "Total gene expression by *H. uvarum* at 2 hours post-inoculation of *S. cerevisiae* correlated with diffusion component 5 values for 2 hour samples. Diffusion components represented composites of *S. cerevisiae* gene expression that capture differences between samples."}
+dc19_2hr <- read_csv("samples_ava.csv") %>%
+  filter(!is.na(tank)) %>%
+  filter(hr == 2) %>%
+  dplyr::select(id, hr, year, tank, ava_id) %>%
+  left_join(dc19)
+
+## 2019
+v19 <- read_tsv("v2019/outputs/counts_all_organisms/raw_counts.tsv") %>%
+  filter(!gene %in% c("__no_feature", "__ambiguous", "__too_low_aQual", "__not_aligned", "__alignment_not_unique")) 
+colnames(v19) <- gsub("outputs\\/htseq_all_organisms\\/", "", colnames(v19))
+colnames(v19) <- gsub("_readcounts\\.txt", "", colnames(v19))
+v19 <- dplyr::select(v19, c(colnames(v19)[colnames(v19) %in% dc19_2hr$id], gene))
+v19 <- v19[rowSums(v19[-which(names(v19) %in% "gene")]) > 0, ] # remove rows that sum to zero
+v19 <- column_to_rownames(v19, "gene") # move gene to rownames
+
+# normalize counts
+v0_19 <- DGEList(v19)              # initialize the DGE object
+v19 <-calcNormFactors(v0_19)       # calculate normalization factors
+v_mm19 <- model.matrix(~dc19_2hr$DC1 + ~dc19_2hr$DC2 + ~dc19_2hr$DC3 + dc19_2hr$DC4 + 
+                         dc19_2hr$DC5 + dc19_2hr$DC6 + dc19_2hr$DC7 + ~dc19_2hr$DC8 + 
+                         dc19_2hr$DC9 + dc19_2hr$DC10)
+v_y19 <- voom(v19, v_mm19, plot = F)
+# v_y19$E contains normalized counts
+
+
+v19 <- v_y19$E %>%
+  as.data.frame() %>%
+  rownames_to_column("gene") %>%
+  mutate(organism = gsub("_.*", "", gene)) %>%
+  mutate(organism = gsub("KLTH0.*", "KLTH0", organism)) %>%
+  mutate(organism = gsub("PEGC.*", "PEGC", organism)) %>%
+  mutate(organism = gsub("MWSF.*", "MWSF", organism)) %>%
+  mutate(organism = gsub("^Y.*", "scer", organism)) %>%
+  mutate(organism = gsub("sn.*", "scer", organism)) %>%
+  mutate(organism = gsub("LPNK.*", "LPNK", organism)) %>%
+  mutate(organism = gsub("^t.*", "scer", organism)) %>%
+  mutate(organism = gsub("RPR1", "scer", organism)) %>%
+  mutate(organism = gsub("SCR1", "scer", organism)) %>%
+  mutate(organism = gsub("TLC1", "scer", organism)) %>%
+  mutate(organism = gsub("LSR1", "scer", organism)) %>%
+  mutate(organism = gsub("PWR1", "scer", organism)) %>%
+  mutate(organism = gsub("NME1", "scer", organism)) %>%
+  mutate(organism = gsub("ICR1", "scer", organism)) %>%
+  mutate(organism = gsub("RUF23", "scer", organism)) %>%
+  mutate(organism = gsub("RNA170", "scer", organism)) %>%
+  mutate(organism = gsub("ZOD1", "scer", organism)) %>%
+  mutate(organism = gsub("IRT1", "scer", organism)) %>%
+  mutate(organism = gsub("RUF20", "scer", organism)) %>%
+  mutate(organism = gsub("RUF21", "scer", organism)) %>%
+  mutate(organism = gsub("RUF22", "scer", organism)) %>%
+  mutate(organism = gsub("RUF5-2", "scer", organism)) %>%
+  mutate(organism = gsub("SRG1", "scer", organism)) %>%
+  mutate(organism = gsub("RME2", "scer", organism)) %>%
+  mutate(organism = gsub("RME3", "scer", organism)) %>%
+  mutate(organism = gsub("RDN5-1", "scer", organism)) %>%
+  mutate(organism = gsub("RDN37-2", "scer", organism)) %>%
+  mutate(organism = gsub("HRA1", "scer", organism)) %>%
+  mutate(organism = gsub("KLTH0", "Lachancea_thermotolerans", organism)) %>%
+  mutate(organism = gsub("PEGC", "Cladosporium_sp_SL_16", organism)) %>%
+  mutate(organism = gsub("MWSF", "Starmerella_bacillaris", organism)) %>%
+  mutate(organism = gsub("LPNK", "Metschnikowia_sp_AWRI3582", organism)) %>%
+  mutate(organism = gsub("scer", "Saccharomyces_cerevisiae", organism)) %>%
+  mutate(organism = gsub("BCIN", "Botrytis_cinerea", organism)) %>%
+  mutate(organism = gsub("BcDW1", "Botrytis_cinerea", organism)) %>%
+  mutate(organism = gsub("VIT", "Vitis_vinifera", organism)) %>%
+  mutate(organism = gsub("CU098", "Rhizopus_stolonifer", organism)) %>%
+  mutate(organism = gsub("metfru2", "Metschnikowia_fructicola", organism)) %>%
+  mutate(organism = gsub("M438DRAFT", "Aureobasidium_pullulans", organism)) %>%
+  mutate(organism = gsub("AWRI3578", "Hanseniaspora_opuntiae", organism)) %>%
+  mutate(organism = gsub("C5L36", "Pichia_kudriavzevii", organism)) %>%
+  mutate(organism = gsub("D499", "Hanseniaspora_uvarum", organism)) %>%
+  mutate(organism = gsub("D6D18", "Aureobasidium_pullulans", organism))
+
+dc19_w_v19 <- v19 %>%
+  pivot_longer(cols = starts_with("2019"), names_to = "sample", values_to = "counts") %>%
+  group_by(sample, organism) %>%
+  summarize(total_counts = sum(counts)) %>%
+  pivot_wider(id_cols = sample, names_from = organism, values_from = total_counts) %>%
+  right_join(dc19, v19, by = "sample")
+
+# linear model:
+# summary(lm(DC5 ~ Hanseniaspora_uvarum, data = dc19_w_v19))
+
+
+ggplot(dc19_w_v19, aes(x = DC5, y =  Hanseniaspora_uvarum, color = ava)) + 
+  geom_point(size = 2, alpha = .9) +
+  labs(y = expression(italic("Hanseniaspora uvarum"))) +
+  theme_minimal()+   
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = .5),
+        legend.title = element_text(size=12, face ="bold"),
+        strip.text.x = element_text(size = 12, face = "bold")) +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+
+# orgs to test:
+# Aureobasidium_pullulans   Botrytis_cinerea     
+# Cladosporium_sp_SL_16     Hanseniaspora_opuntiae    Hanseniaspora_uvarum     
+# Lachancea_thermotolerans  Metschnikowia_fructicola  Metschnikowia_sp_AWRI3582
+# Pichia_kudriavzevii       Rhizopus_stolonifer       Saccharomyces_cerevisiae
+# ggplot(dc19_w_v19, aes(x = DC5, y = Cladosporium_sp_SL_16)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y = Hanseniaspora_opuntiae)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y = Lachancea_thermotolerans)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y = Saccharomyces_cerevisiae)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y =  Metschnikowia_fructicola)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y =  Pichia_kudriavzevii)) + 
+#   geom_point()
+# ggplot(dc19_w_v19, aes(x = DC5, y = Rhizopus_stolonifer)) + 
+#   geom_point()
+```
+
+Diffusion component 7 predominantly captured separation in 16 hour samples, where unlike at 2 hours, fermentations from SMV1 and SMV2 segregated the opposite extrema from SRH1.
+SMV and SRH are neighboring American Viticulture Areas in Southern California (**Figure \@ref(fig:fig1)A**).
+While few genes are induced in SMV samples, *ADH4* is the top induced gene.
+Alcohol dehydrogenase plays an important role in fermentation by catabolising acetaldehyde to ethanol and regenerating the redox cofactor NAD+.
+However Adh1p is the primary isoform responsible for this reaction during wine fermentation [@ciriacy1975genetics].
+This may indicate that formation of fusel alcohols was more prevalent in SMV fermentations via action of Adh4p as the last step in the Ehrlich pathway [@dickinson2003catabolism].
+
+Diffusion component six separated the 64 hour samples, with the OR samples and RRV2 samples segregating to one extrema.
+While no pathways were enriched among genes that were induced in these samples, genes associated with nitrogen limitation (*DAL5*, *PUT1*, *PUT2*; [@rossignol2003genome]) where induced while genes involved in ammonia metabolism (*MEP3*, *SSY1*, *AUA1*) were induced at the other extrema.
+Diffusion component 6 correlated with initial NOPA and NH~3~ in grape must (initial NOPA: R^2^ = 0.62, p < 0.001, initial NH~3~: R^2^ = 0.60, p < 0.001), driven by low initial nitrogen in OR1, OR2, and RRV2 (**Figure \@ref(fig:DC6nitrogen)**).
+Interestingly, while initial nitrogen was low and OR1, OR2, and RRV2, we supplemented primary fermentations that had low nitrogen using XX at 40 hours of fermentation.
+Yet, we still detected signatures of nitrogen limitation from for these sites, suggesting that standard commercial remediations may not be sufficient for some fermentations.
+On the opposite extreme from the nitrogen limited fermentations, induced genes were enriched and fatty acid metabolism (*ELO1*, *ELO3*) which may impact wine aroma outcomes [@liu2019comparing].
+
+```{r DC6nitrogen, fig.cap = "Diffusion component 6 separates samples by initial nitrogen concentration in the grape must. **A)** Initial concentration of NH~3~ and NOPA was lower in fermentations from OR1, OR2, and RRV2 than other vineyards. **B, C)** Initial NH~3~ and NOPA in grape must correlates with diffusion component 6, driven by low nitrogen in fermentations from three vineyard sites."}
+nitrogen <- info %>% 
+  filter(!is.na(tank)) %>%
+  filter(year == 2019) %>%
+  dplyr::select(ava_id, year, ava, initial_nh3, initial_nopa) %>%
+  distinct() %>%
+  pivot_longer(cols = starts_with("initial"), names_to = "variable", values_to = "values") %>%
+  mutate(variable = gsub("initial_nh3", "initial NH3", variable)) %>%
+  mutate(variable = gsub("initial_nopa", "initial NOPA", variable)) 
+
+nitrogen$ava_id <- factor(nitrogen$ava_id, 
+                          levels = c('OR1', 'OR2', 'AV1', 'AV2', 'RRV1', 
+                                     'RRV2', 'RRV3', 'SNC1', 'SNC2', 
+                                     'CRN1', 'AS1', 'AS2', 'SMV1', 
+                                     'SMV2','SRH1'))
+nitrogen <- ggplot(nitrogen, aes(x = ava_id, y = values, fill = ava)) +
+  geom_col() +
+  facet_wrap(~variable, ncol = 2) +
+  labs(x = "vineyard site", y = "concentration") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = .5),
+        legend.title = element_text(size=12, face ="bold"),
+        strip.text.x = element_text(size = 12, face = "bold")) +
+  scale_fill_manual(values = c(SRH = srh, SMV = smv,  
+                                AS = as, SNC = snc,  CRN = crn, 
+                                RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'), 
+                    name = "AVA")
+
+
+# correlation -----------------
+dc19_64 <- dc19 %>%
+  filter(hr == 64)
+
+# linear models
+# summary(lm(DC6 ~ initial_nopa, dc19_64))
+# summary(lm(DC6 ~ initial_nh3, dc19_64))
+
+# correlation results
+nh3_corr <- ggplot(dc19_64, aes(x = DC6, y = initial_nh3, color = ava)) + 
+  geom_point() + 
+  labs(y = "initial NH3") +
+  theme_minimal()+
+  theme(legend.position = "none") +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'))
+
+nopa_corr <- ggplot(dc19_64, aes(x = DC6, y = initial_nopa, color = ava)) + 
+  geom_point() +
+  labs(y = "initial NOPA") +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  scale_color_manual(values = c(SRH = srh, SMV = smv,  
+                               AS = as, SNC = snc,  CRN = crn, 
+                               RRV = rrv, AV = av, OR = or),
+                    breaks = c('OR', 'AV', 'RRV', 'SNC', 'CRN', 'AS', 'SMV', 'SRH'))
+
+ggarrange(nitrogen, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2, 
+          common.legend = T, legend = "bottom")
+```
+
+Interestingly, while diffusion component 8 reflected separation among 112 hour samples with SNC1 and AS2 segregating from other samples (**Figure \@ref(fig:v2019dc2dc3)**), 14 of the 24 genes induced in those samples are of unknown function.
+Cellular response to hydrogen peroxide was enriched among identifiable genes (*DDR2*, *HSP30*), as well as extracellular region (*UTH1*, *AFB1*, *MFA1*), suggesting that the induced genes of unknown function may be involved in these pathways.
+
+Across diffusion components that reflect differences among samples within a stage of fermentation, some fermentations from the same American Viticulture Area segregated similarly across diffusion components.
+Fermentations from OR, AV, and SMV often group together (FIGURE), providing support for the concept of American Viticulture Areas and regional terroir.
+However, we do not observe grouping among all fermentations from the same American Viticulture Area along all diffusion components.
+For example, samples from AS group together along diffusion component 5 (2 hours) and diffusion component 6 (64 hours), but not in diffusion component 8 (112 hours).
+Interestingly, AS sites are separated by 1 km and yet have detectable variation in *S. cerevisiae* metabolism in primary fermentation.
+Similarly, fermentations from RRV do not cluster together along any diffusion component, suggesting variation in subappellations within the Russian River Valley leads to differential outcomes in wine.
 
 ```{r eval = F}
 tmp <- dc19 %>%
@@ -1026,15 +1403,21 @@ ggplot(dc19, aes(x = DC9, y = 0, color = factor(hr, levels = c("0", "2", "6", "1
   theme(plot.title = element_text(hjust = 0.5)) 
 ```
 
-## Diffusion mapping works on other data sets with global shifts in gene expression
+```{r plot, eval = F}
+ggplotly(ggplot(dc19, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(size = 2) +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme(plot.title = element_text(hjust = 0.5)))
+```
 
-OR
+## Diffusion mapping identifies global shifts in gene expression during hypoxia
 
-## Diffusion mapping reveals a coordinated response to hypoxia
-
-While diffusion maps successfully distinguished major and minor differences in fermentations from vineyard sites, we were curious whether this method is broadly applicable to RNA-sequencing where global shifts in gene expression occurr.
-To address this, we identified a time series gene expression profile of exposure of *S. cerevisiae* to hypoxia.
+While diffusion maps successfully distinguished major and minor differences in fermentations from vineyard sites, we were curious whether this method is broadly applicable to RNA-sequencing where global shifts in gene expression occur.
+To address this, we identified a time series gene expression profile of the hypoxic response in *S. cerevisiae*.
 Hypoxia is...
+Hypoxia is special in *S. cerevisiae* because...
 The hypoxic response is organized by transcription factors...
 Data set represents knock-out mutants of key transcription factors during a 240 minute gradual transition to hypoxia.
 
@@ -1311,7 +1694,7 @@ m <- t(m)                                             # transpose counts
 
 ```{r diffusion_mapping_hypoxia}
 ## Build diffusion map
-nm <- m %>% norm.mat()        # normalize
+nm <- m %>% norm_mat()        # normalize
 aff <- nm %>%
   get_euc(., n.threads = 1) %>% 
   threshold(., top_k = 20)      # make affinity matrix
@@ -1356,9 +1739,9 @@ ggplotly(ggplot(tmp, aes(y = val, x = num)) +
   ggtitle("k=20 hypoxia"))
 ```
 
-Diffusion component 1 captures the time-dependent transition to a hypoxic phenotype. 
-Wild type cells experience a sharp transition from 0-5 minutes of nitrogen exposure, indicating a fast metabolic transition to hypoxia that matures over the remainder of the time course (**Figure \@ref(fig:DC1hypoxia)**).
-Deletants deviate from this pattern and have slower transitions to a hypoxic phenotype or lack maintenance of that phenotype over the time course.
+Diffusion component 1 captures the time-dependent transition to a hypoxic phenotype (**Figure \@ref(fig:DC1hypoxia)**). 
+Wild type cells experience a sharp transition from 0-5 minutes of nitrogen exposure, indicating a fast metabolic transition to hypoxia that matures over the remainder of the time course.
+Deletants deviate from this pattern and have slower transitions to a hypoxic phenotype or lack maintenance of that phenotype over time.
 
 ```{r DC1hypoxia, fig.height = 2, fig.cap="Diffusion map of wildtype and 22 mutant strains exposed to 100% nitrogen for 0-240 minutes. Wildtype cells are triangles, while mutants appear as points."}
 dc_hyp$time <- as.factor(dc_hyp$time)
@@ -1485,8 +1868,14 @@ dc2_hyp_all_down <- dc2_hyp_all %>%
   filter(adj.P.Val < 0.05)
 ```
 
-We next investigated whether genes differentially expressed genes along diffusion component 1 match oxygen-regulated genes identified by seven previous microarray and RNA-sequencing studies of hypoxia [@bendjilali2017time].
-Of the 11 genes that were characterized as oxygen-regulated in six or seven microarray studies, we identify eight in the first diffusion component with a log~2~ fold change greater than 2 while all 11 genes are significantly differentially expressed.
+We next investigated whether genes differentially expressed genes along diffusion component 1 matched oxygen-regulated genes identified by previous studies of hypoxia.
+Across seven microarray studies, 11 genes (3 aerobic, 8 hypoxic) were consistently identified as being involved in aerobiosis or anaerobiosis in at least six studies (studies compiled by @bendjilali2017time).
+Of genes differentially expressed along diffusion component 1, we identify 8 of 11 hypoxia genes with a log~2~ fold change greater than two, and 11 of 11 genes with p < 0.05.
+We then compared our results to a time-series RNA-sequencing profile of wild type *S. cerevisiae* during hypoxic response [@bendjilali2017time].
+Two hundred thirty-nine of 291 (82.1%) aerobic genes were significantly induced prior to exposure to nitrogen, while 422 of 519 (81.3%) hypoxic genes were significantly induced after prolonged exposure to nitrogen (**Table \@ref(tab:bendjilali)**). 
+We find that genes induced at time zero are enriched for XXX, while genes induced after prolonged exposure to nitrogen are induced for XXX.
+This matches our knowledge of the hypoxic transition in yeast (CITE).
+These results indicate that the first diffusion component captures the gloval shift in gene expression during the hypoxic shift.
 
 ```{r oxygen_regulated_genes}
 url <- "https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/15/TableS3.xlsx"
@@ -1534,10 +1923,6 @@ aerobic_genes_dc2_hyp <- aerobic_genes[aerobic_genes$ORF %in% dc2_hyp$ORF, ]
 # table(aerobic_genes$ORF %in% dc2_hyp$ORF)
 ```
 
-[@bendjilali2017time] further characterized genes as hypoxic or aerobic using differential expression of wild type time series data set. 
-To understand whether diffusion mapping captured the same oxygen-regulated genes, we intersected the hypoxic and aerobic genes with genes that were differentially expressed along DC1 and DC2 (**Table \@ref(tab:bendjilali)**). 
-Two hundred thirty-nine of 291 (82.1%) genes predicted as aerobic by [@bendjilali2017time] were significantly induced prior to exposure to nitrogen, while 422 of 519 (81.3%) genes predicted as hypoxic significantly induced after prolonged exposure to nitrogen. 
-
 ```{r bendjilali}
 url <- 'https://www.g3journal.org/highwire/filestream/473070/field_highwire_adjunct_files/13/TableS1.xlsx'
 download.file(url = url, destfile = "hypoxia/inputs/tabs1_rnaseq_res.xlsx")
@@ -1560,6 +1945,40 @@ kable(oxreg_int, "latex", booktabs = T, col.names = c("Intersection", "Hypoxic (
   kable_styling(font_size = 9)
 ```
 
+While a dominant global shift in gene expression occurs in reponse to hypoxia, diffusion component 6 differentiates a transient shift at 30 minutes.
+
++ Tie in to existing lit
++ *rox1* mutate most exagerated -- might be important for regulating 30 minute transition.
+
+Successful transition to and maintenance of anaerobic metabolism requires regulation from many transcription factors.
+For example, the gene encoding the anaerobic cell wall remodelling protein Dan1p is regulated by four XXX (CITE).
+Using diffusion mapping, we identify transcription factor mutants that transition to hypoxia along trajectories that deviate from wild type.
+
++ DC2 hap mutant most differentiated on DC2 -> most important / hap deletion leads to the most disruption in hypoxic transition.
++ DC3/4/5 mga2/upc2/ecm11
++ DC3 tpa1/dsc
+
+Diffusion maps cluster mutants that have the most similar gene expression profiles.
+May indicate shared regulatory function of disrupted targets?
+
++ hap
++ mga2/upc2/ecm11
++ rox1/mot3/ett1
++ dsc\*/tpa1
+
+Interestingly, while some mutants segregate to the extrema of some diffusion components, the deleted transcription factor is not reciprocally induced by samples at the opposite extrema, indicating that expression of transcription factor targets drives more similarity between samples than expression of the transcription factors themselves.
+Exceptions:
+
++ DC7 mot3
++ rox1
+
+In some diffusion components, we observe inappropriate expression of genes by some mutants.
+
++ DC5, 0min: rox1, mot3, hap4, hap5, hap2/hap3/hap4/hap5, dcs1 inappropriately induce anaerobic genes under full oxygen.
++ genes may be repressed in part by these transcription factors, and induction under aerobic conditions may indicate insufficient repression in the absence of these transcription factors.
+
+While many of the genes that are differentially expression along diffusion components encode proteins of known function, many genes of unknown function are induced along diffusion component 4. 
+The mix of enrichment and TF knockout may provide clues as to their function (EXPLORE MORE).
 
 # Discussion
 
@@ -2225,7 +2644,7 @@ ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_b
 dc_top_enrich_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix", show_genes = F)
 ```
 
-```{r DC2viz2017, fig.height = 7.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+```{r DC2viz2017, eval = F, fig.height = 7.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
 dc_top_enrich_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "brix", show_genes = F)
 ```
 
@@ -2238,7 +2657,7 @@ dc_top_enrich_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr", 
 ```
 
 ```{r DC3viz2019, fig.height = 6, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr", show_genes = F)
+dc_top_enrich_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr", show_genes = T)
 ```
 
 ```{r DC4viz2019, fig.height = 3.2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
@@ -2258,7 +2677,7 @@ dc_top_enrich_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava",
 ```
 
 ```{r DC8viz2019, fig.height = 1.7, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 8 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava", show_genes = F)
+dc_top_enrich_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava", show_genes = T)
 ```
 
 ```{r DC9viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
@@ -2278,18 +2697,23 @@ gene <- 'YIR033W' # MGA2
 gene <- 'YGL055W' # OLE1
 gene <- 'YJR150C' # DAN1
 gene <- 'YDR044W' # HEM13
-Y <- dc_y$E[gene, ]
-dc$Y = Y
-ggplot(dc, aes(y = Y, x = DC2)) +
+gene <- 'YDL014W' # ZUO1
+gene <- 'YHL016C' # DUR3
+gene <- 'YJR152W' # DAL5
+gene <- 'YOR192C' # thi72
+gene <- 'YOR143C' # thi80
+Y <- dc_y19$E[gene, ]
+dc19$Y = Y
+ggplotly(ggplot(dc19, aes(y = Y, x = DC4, label = ava_id)) +
   geom_point(color = "grey", alpha = .7) +
-  ggtitle(paste(gene, ", ", 
-                dc2_top %>% filter(ORF == gene) %>% dplyr::select(COMMON),
-                ": Log2FC = ", 
-                dc2_top %>% filter(ORF == gene) %>% dplyr::select(logFC) %>% mutate(logFC = round(logFC, digits = 3))))+
+  # ggtitle(paste(gene, ", ", 
+  #               dc2_top %>% filter(ORF == gene) %>% dplyr::select(COMMON),
+  #               ": Log2FC = ", 
+  #               dc2_top %>% filter(ORF == gene) %>% dplyr::select(logFC) %>% mutate(logFC = round(logFC, digits = 3))))+
   theme_minimal() +
   labs(y = "normalized log expression value") +
   #geom_text(x = -.05, y = 12.4, label=lm_eqn(dc, 'Y', 'DC2'), parse=T) +
-  geom_smooth(method='lm')
+  geom_smooth(method='lm'))
 
 ```
 
