@@ -339,17 +339,17 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
     up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
   } else if(show_genes == F) {
     down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) %>%
-      dplyr::select(-geneID)
+      dplyr::select(-geneID, -enrichment, Pathway = Description)
     up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top) %>%
-      dplyr::select(-geneID)
+      dplyr::select(-geneID, -enrichment, Pathway = Description)
   }
 
 
   # PRUNE PATHWAY NAMES TO FIRST X WORDS
-  up_tbl$Description <- gsub(" \\(.*\\)", "", up_tbl$Description)
-  up_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", up_tbl$Description)
-  down_tbl$Description <- gsub(" \\(.*\\)", "", down_tbl$Description)
-  down_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", down_tbl$Description)
+  up_tbl$Pathway <- gsub(" \\(.*\\)", "", up_tbl$Pathway)
+  up_tbl$Pathway <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", up_tbl$Pathway)
+  down_tbl$Pathway <- gsub(" \\(.*\\)", "", down_tbl$Pathway)
+  down_tbl$Pathway <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", down_tbl$Pathway)
   
   # PLOT ANNOTATION TABLES
   if(nrow(up_tbl) == 0){
@@ -926,15 +926,278 @@ We next explored subsequent diffusion components to determine the non-dominant d
 While progression through fermentation was the primary driver of separation among samples, consistent transitions in early fermentation and late fermentation drove secondary structure among samples.
 Diffusion components captured cellular remodeling in early fermentation, entry into stationary phase, and starvation during late fermentation.
 
+```{r all_dc19_brix, eval = F}
+dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc9_19p <-ggplot(dc19, aes(x = DC9, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc10_19p <-ggplot(dc19, aes(x = DC10, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+all_dc_19 <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
+                       dc7_19p, dc8_19p, dc9_19p, dc10_19p, ncol = 1, legend = "bottom",
+                       common.legend = T, labels = c("B", "", "", "", "", "", "", "", "", ""))
+```
+
+```{r all_dc19_hour}
+
+dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color =  factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_19_hr <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
+                       dc7_19p, dc8_19p, ncol = 1, legend = "bottom",
+                       common.legend = T, labels = c("B", "", "", "", "", "", "", ""))
+```
+
+```{r all_dc19_ava}
+dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+          "AS" = as, "SMV" = smv, "SRH" = srh))
+
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.51, .51)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.51, .51)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_19_ava <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
+                           dc7_19p, dc8_19p, ncol = 1, legend = "bottom",
+                           common.legend = T, labels = c("A", "", "", "", "", "", "", ""))
+```
+
+```{r allDCs2019, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2019 vintage colored by **A** AVA and **B** hour. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
+ggarrange(all_dc_19_ava, all_dc_19_hr, legend = "bottom")
+```
+
 In general, the number of differentially expressed genes diminished across diffusion components indicating increasingly subtle differences between samples (**Table  \@ref(tab:numdiffex)**).
 This, combined with lower diffusion components capturing more structure across samples, allowed us to see what stages of fermentation undergo the most gene expression remodeling. 
-In the 2019 vintage, we found metabolic remodeling during early fermentation accounted for more variation than at the end of fermentation given that diffusion components 2 and 3 differentiated early fermentation samples while diffusion component 4, 6, and 8 differentiated late fermentation samples.
+In the 2019 vintage, we found metabolic remodeling during early fermentation accounted for more variation than at the end of fermentation given that diffusion components 2 and 3 differentiated early fermentation samples while diffusion component 4, 6, and 8 differentiated late fermentation samples (**Figure \@ref(fig:allDCs2019)**).
 
 
 ```{r numdiffex}
 num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4", 
-                                                 "DC5", "DC6", "DC7", "DC8",
-                                                 "DC9", "DC10"),
+                                                 "DC5", "DC6", "DC7", "DC8"),
                          induced = c(length(filter(dc1_17, logFC > 0)$ORF),
                                      length(filter(dc2_17, logFC > 0)$ORF),
                                      length(filter(dc3_17, logFC > 0)$ORF),
@@ -942,9 +1205,7 @@ num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4",
                                      length(filter(dc5_17, logFC > 0)$ORF),
                                      length(filter(dc6_17, logFC > 0)$ORF),
                                      length(filter(dc7_17, logFC > 0)$ORF),
-                                     length(filter(dc8_17, logFC > 0)$ORF),
-                                     length(filter(dc9_17, logFC > 0)$ORF),
-                                     length(filter(dc10_17, logFC > 0)$ORF)),
+                                     length(filter(dc8_17, logFC > 0)$ORF)),
                          repressed = c(length(filter(dc1_17, logFC < 0)$ORF),
                                        length(filter(dc2_17, logFC < 0)$ORF),
                                        length(filter(dc3_17, logFC < 0)$ORF),
@@ -952,9 +1213,7 @@ num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4",
                                        length(filter(dc5_17, logFC < 0)$ORF),
                                        length(filter(dc6_17, logFC < 0)$ORF),
                                        length(filter(dc7_17, logFC < 0)$ORF),
-                                       length(filter(dc8_17, logFC < 0)$ORF),
-                                       length(filter(dc9_17, logFC < 0)$ORF),
-                                       length(filter(dc10_17, logFC < 0)$ORF)),
+                                       length(filter(dc8_17, logFC < 0)$ORF)),
                          induced = c(length(filter(dc1_19, logFC > 0)$ORF),
                                      length(filter(dc2_19, logFC > 0)$ORF),
                                      length(filter(dc3_19, logFC > 0)$ORF),
@@ -962,9 +1221,7 @@ num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4",
                                      length(filter(dc5_19, logFC > 0)$ORF),
                                      length(filter(dc6_19, logFC > 0)$ORF),
                                      length(filter(dc7_19, logFC > 0)$ORF),
-                                     length(filter(dc8_19, logFC > 0)$ORF),
-                                     length(filter(dc9_19, logFC > 0)$ORF),
-                                     length(filter(dc10_19, logFC > 0)$ORF)),
+                                     length(filter(dc8_19, logFC > 0)$ORF)),
                          repressed = c(length(filter(dc1_19, logFC < 0)$ORF),
                                        length(filter(dc2_19, logFC < 0)$ORF),
                                        length(filter(dc3_19, logFC < 0)$ORF),
@@ -972,9 +1229,7 @@ num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4",
                                        length(filter(dc5_19, logFC < 0)$ORF),
                                        length(filter(dc6_19, logFC < 0)$ORF),
                                        length(filter(dc7_19, logFC < 0)$ORF),
-                                       length(filter(dc8_19, logFC < 0)$ORF),
-                                       length(filter(dc9_19, logFC < 0)$ORF),
-                                       length(filter(dc10_19, logFC < 0)$ORF))
+                                       length(filter(dc8_19, logFC < 0)$ORF))
 )
 
 kable(num_diffex, "latex", booktabs = T, col.names = c("diffusion component", "induced", "repressed", "induced", "repressed"),
@@ -984,40 +1239,11 @@ kable(num_diffex, "latex", booktabs = T, col.names = c("diffusion component", "i
 ```
 
 Diffusion component two captured the transition from 2 to 6 hours of fermentation, while the diffusion component 3 capture the transition from 6 to 16 hours of fermentation.
-Along diffusion component 2, arginine biosynthetic process was enriched in genes that were induced in the 2 hour samples (*ARG1*, *ARG3*, *ARG5,6*, *ARG8*) (FIGURE).
+Along diffusion component 2, arginine biosynthetic process was enriched in genes that were induced in the 2 hour samples (*ARG1*, *ARG3*, *ARG5,6*, *ARG8*) (**Figure \@ref(fig:annotatedplts19hr)**, **Figure \@ref(fig:DC2viz2019)**).
 Arginine is one of the most abundant amino acids during fermentation and is used heavily in protein biosynthesis [@crepin2017management].
 Arginine consumption was found to provide all anabolic requirements for *S. cerevisiae* during wine fermentation [@rollero2019comparison], so induction of these biosynthetic genes in early fermentation may be involved in early cellular adaptation to the wine environment.
 Interestingly, four of the 16 genes induced in 2 hour samples have no known function.
 Given the few genes induced in 2 hour samples and enrichment of arginine biosynthesis, these genes may play a related role in arginine metabolism.
-
-By 6 hours, gene expression supports a transition to anaerobic metabolism.
-We detected induction of anaerobic translation elongation factor eiF-5A, *ANB1*.
-*ANB1* is optimally expressed below 0.5 umol/L O~2~ [@kwast1998oxygen], likely indicating a drop in fermentation oxygen by this time.
-Glycolysis/gluconeogenesis was enriched among genes induced in the six-hour samples (FIGURE), potentially indicating that carbon dioxide production began shielding fermentation from oxygen by 6 hours after inoculation.
-Cell wall processes are also induced at 6 hours; indeed, *TIR1-4*, which encode cell wall mannoproteins [@abramova2001reciprocal], were four of the top five genes induced in 6 hour samples (FIGURE).
-*TIR1*, *TIR3*, and *TIR4* are required for anaerobic growth [@abramova2001reciprocal].
-
-Diffusion component 3 captured the transition from 6 to 16 hours of fermentation.
-We observed continued induction of cell while remodeling proteins, suggesting these processes play a pivotal role throughout early fermentation (FIGURE).
-In addition to *TIR1-4*, *DAN1* was induced in 16 hour samples along with many *PAU* genes (*PAU2*, *PAU3*, *PAU4*, *PAU5*, *PAU7*, *PAU8*, *PAU10*, *PAU11*, *PAU12*, *PAU15*, *PAU16*, *PAU17*, *PAU19*, *PAU20*, *PAU23*, *PAU24*).
-Many biological processes, cellular compartments, and molecular functions were enriched in the 293 genes that were induced in the 16 hour samples (FIGURE), which is consistent with the early log phase of growth.
-Entry into log phase of growth is likely supported by ribosomal remodeling that begins at 6 hours after inoculation.
-Of 32 genes induced at 6 hours compared to 16 hours, 13 were involved in ribosomal processes.
-
-Diffusion component 4 separated the 64 hour samples from the 112 hour samples.
-This separation was likely driven by a decreased availability of preferred nutrients at 112 hours.
-In the 64 hour samples, transmembrane transport, including amino acid and polyamine transport, were enriched in genes that were induced in the 64 hour samples (FIGURE). 
-Two of the top induced genes (*DUR3* and *DAL5*), are involved in allantoin metabolism, a non-preferred nitrogen source (FIGURE).
-Induction of these genes at 64 hours likely indicates relief of nitrogen could tablet light repression consistent with decreasing nitrogen concentrations.
-Conversely, *HXT13* and *MAN2*  for the top induced genes in the 112 our samples, along with *HXT17* (FIGURE). 
-These *HXT* genes are mannitol transporters [@Jordan2016] while and *MAN2* encodes mannitol dehydrogenase. 
-Mannitol is produced by fructophilic acetic acid bacteria like *Lactobacillus kunkeii* [@bisson2017two], and expression of these genes likely signals that mannitol was in the media and that no preferred sugars were left.
-
-Unlike the 2019 vintage, we did not observe clear delineations among samples taken at the same time in late fermentation in the 2017 vintage (FIGURE).
-While we detected dominant drivers of variation among samples (e.g. global shift in gene expression during primary fermentation), we think that lack of grouping among samples may indicate a data quality issue.
-All gene expression data are inherently noisey [@hansen2011sequencing].
-With advances in sequencing technology, we sequenced the 2019 vintage with unique molecular identifier (UMI) barcodes and thus were better able to demultiplex sequencing lanes and remove PCR duplicates. 
-While diffusion mapping faithfully recapitulates the dominant metabolic processes in fermentation, we are skeptical that noise in the data interferes with our ability to draw further conclusions from higher diffusion components in the 2017 vintage.
 
 ```{r v2019dc2dc3, fig.height = 4, fig.width =5, fig.cap = "Metabolic transitions in early and late fermentation separate samples. **A, B** Diffusion components 2 and 3 capture variation in early fermentation. While late-fermentation samples cluster at the origin, early fermentation samples form three clusters. **C, D** Diffusion components 4 and 6 capture variation in late fermentation. While early fermentation samples cluster at the origin, late fermentation samples separate by time in fermentation and vineyard site region."}
 by_hour <- ggplot(dc19, aes(x = DC2, y = DC3, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava)) +
@@ -1055,11 +1281,92 @@ ggarrange(ggarrange(by_hour, by_hour_46, labels = c("A", "C"), legend = "bottom"
 ```
 
 
+By 6 hours, gene expression supports a transition to anaerobic metabolism.
+We detected induction of anaerobic translation elongation factor eiF-5A, *ANB1* (**Figure \@ref(fig:annotatedplts19hr)**).
+*ANB1* is optimally expressed below 0.5 umol/L O~2~ [@kwast1998oxygen], likely indicating a drop in fermentation oxygen by this time.
+Glycolysis/gluconeogenesis was enriched among genes induced in the six-hour samples (**Figure \@ref(fig:DC2viz2019)**), potentially indicating that carbon dioxide production began shielding fermentation from oxygen by 6 hours after inoculation.
+Genes important for cell wall processes were also induced at 6 hours; indeed, *TIR1-4*, which encode cell wall mannoproteins [@abramova2001reciprocal], were four of the top five genes induced in 6 hour samples (**Figure \@ref(fig:annotatedplts19hr)**).
+*TIR1*, *TIR3*, and *TIR4* are required for anaerobic growth [@abramova2001reciprocal].
+
+Diffusion component 3 captured the transition from 6 to 16 hours of fermentation.
+We observed continued induction of cell wall remodeling proteins, suggesting these processes play a pivotal role throughout early fermentation (**Figure \@ref(fig:annotatedplts19hr)**).
+In addition to *TIR1-4*, *DAN1* was induced in 16 hour samples along with many *PAU* genes (*PAU2*, *PAU3*, *PAU4*, *PAU5*, *PAU7*, *PAU8*, *PAU10*, *PAU11*, *PAU12*, *PAU15*, *PAU16*, *PAU17*, *PAU19*, *PAU20*, *PAU23*, *PAU24*).
+Many biological processes, cellular compartments, and molecular functions were enriched in the 293 genes that were induced in the 16 hour samples (**Figure \@ref(fig:DC3viz2019)**), which is consistent with the early log phase of growth.
+Entry into log phase of growth is likely supported by ribosomal remodeling that begins at 6 hours after inoculation.
+Of 32 genes induced at 6 hours compared to 16 hours, 13 were involved in ribosomal processes.
+
+Diffusion component 4 separated the 64 hour samples from the 112 hour samples.
+This separation was likely driven by a decreased availability of preferred nutrients at 112 hours.
+In the 64 hour samples, transmembrane transport, including amino acid and polyamine transport, were enriched in genes that were induced in the 64 hour samples (**Figure \@ref(fig:DC4viz2019)**). 
+Two of the top induced genes (*DUR3* and *DAL5*), are involved in allantoin metabolism, a non-preferred nitrogen source (**Figure \@ref(fig:annotatedplts19hr)**).
+Induction of these genes at 64 hours likely indicates relief of nitrogen could tablet light repression consistent with decreasing nitrogen concentrations.
+Conversely, *HXT13* and *MAN2*  for the top induced genes in the 112 our samples, along with *HXT17* (**Figure \@ref(fig:annotatedplts19hr)**). 
+These *HXT* genes are mannitol transporters [@Jordan2016] while and *MAN2* encodes mannitol dehydrogenase. 
+Mannitol is produced by fructophilic acetic acid bacteria like *Lactobacillus kunkeii* [@bisson2017two], and expression of these genes likely signals that mannitol was in the media and that no preferred sugars were left.
+
+Unlike the 2019 vintage, we did not observe clear delineations among samples taken at the same time in late fermentation in the 2017 vintage (**Figure \@ref(fig:allDCs2017)**).
+While we detected dominant drivers of variation among samples (e.g. global shift in gene expression during primary fermentation), we think that lack of grouping among samples may indicate a data quality issue.
+All gene expression data are inherently noisey [@hansen2011sequencing].
+With advances in sequencing technology, we sequenced the 2019 vintage with unique molecular identifier (UMI) barcodes and thus were better able to demultiplex sequencing lanes and remove PCR duplicates. 
+While diffusion mapping faithfully recapitulates the dominant metabolic processes in fermentation, we are skeptical that noise in the data interferes with our ability to draw further conclusions from higher diffusion components in the 2017 vintage.
+
+```{r all_dc17_brix}
+dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  xlim(c(-0.3, .3)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_viridis_c() +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17 <- ggarrange(dc1_17p, dc2_17p, legend = "bottom",
+                       ncol = 1, common.legend = T, c("B", ""))
+```
+
+```{r all_dc17_ava}
+dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
+  geom_jitter(alpha = .8) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17_ava <- ggarrange(dc1_17p, dc2_17p, legend = "bottom",
+                           ncol = 1, common.legend = T, labels = c("A", ""))
+```
+
+```{r allDCs2017, fig.height= 3, fig.cap = "One-dimensional plots of diffusion components 1 and 2 for the 2017 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Unlike in the 2019 vintage, samples in lower diffusion components do not cluster, potentially indicating a data quality issue that was remediated in the 2019 vintage through the use of UMI barcodes."}
+ggarrange(all_dc_17_ava, all_dc_17, legend = "bottom")
+```
+
 ## Vineyard site differentiates samples within fermentation stages
 
 Along diffusion components that separated stages of fermentation, we detected outliers that may indicate fundamentally different metabolic strategies during those stages of fermentation.
 
-In the 2017 vintage, samples taken at 40 hours from fermentations from SMV1, SMV2, and OR1 were shifted toward the 16 hour samples indicating a different metabolic strategy in fermentations from these vineyards (FIGURE).
+In the 2017 vintage, samples taken at 40 hours from fermentations from SMV1, SMV2, and OR1 were shifted toward the 16 hour samples indicating a different metabolic strategy in fermentations from these vineyards (**Figure \@ref(fig:allDCs2017)**).
 Expression of genes involved in mannitol at the end of fermentation was highest for the SMV sites, likely indicating higher concentrations of mannitol in these fermentations.
 This, combined with an altered metabolic program in early fermentation, may be a signature of [GAR+] prion state induced by acetic acid produced by *L. kunkeei* [@bisson2017two] (CITE BRIX PAPER).
 We were not able to test for this prion state in the 2017 vintage and did not detect it in the 2019 vintage (CITE BRIX PAPER), so altered core metabolic trajectory may be caused by other factors.
@@ -1165,11 +1472,11 @@ In this way, we identified vineyard-specific gene expression patterns.
 
 Samples taken at 2 hours separated along diffusion component 5 with samples from SMV1, SMV2, SRH1, AV2, and RRV3 separating to one extrema and samples from our RRV2, CRN1, SNC1, and AS2 separating to the other.
 While no genes were significantly induced among the latter group, 13 were induced in the former (**Table \@ref(tab:numdiffex)**).
-This set was enriched for vitamin metabolic process and cell wall (FIGURE).
+This set was enriched for vitamin metabolic process and cell wall (**Figure \@ref(fig:DC5viz2019)**).
 Given that co-culture experiments of wine fermentations have demonstrated that *S. cerevisiae* induces genes involved in cell wall remodeling and vitamin biosynthesis in response to the presence of non-*Saccharomyces* yeasts [@barbosa2015genomic; @kosel2017influence; @curiel2017different], we tested whether gene expression by non-*Saccharomyces* yeasts in 2 hour samples correlated with diffusion component 5.
 Total gene expression of *Hanseniaspora uvarum* correlated with diffusion component 5 (R^2^ = 0.49, p < 0.001) (**Figure \@ref(fig:DC2uvarum)**), suggesting that interactions with *H. uvarum* in early fermentation altered *S. cerevisiae* metabolism in some fermentations.
 This is consistent with the previous study that found that *S. cerevisiae* remodels its cell wall in the presence of *H. uvarum* at three hours post-inoculation in wine fermentation [@curiel2017different].
-Interestingly, *PDC5* was also induced in fermentations with higher gene expression by *H. uvarum* (FIGURE).
+Interestingly, *PDC5* was also induced in fermentations with higher gene expression by *H. uvarum* (**Figure \@ref(fig:annotatedplts19ava)**).
 *PDC5* encodes one of three isoforms of pyruvate decarboxylase, an enzyme involved in the formation of flavor–active higher alcohols in wine via the Ehrlich pathway [@ter1998pyruvate].
 This suggests that the presence of *H. uvarum* may impact wine sensory outcomes.
  
@@ -1293,15 +1600,15 @@ ggplot(dc19_w_v19, aes(x = DC5, y =  Hanseniaspora_uvarum, color = ava)) +
 #   geom_point()
 ```
 
-Diffusion component 7 predominantly captured separation in 16 hour samples, where unlike at 2 hours, fermentations from SMV1 and SMV2 segregated the opposite extrema from SRH1 (FIGURE).
+Diffusion component 7 predominantly captured separation in 16 hour samples, where unlike at 2 hours, fermentations from SMV1 and SMV2 segregated the opposite extrema from SRH1 (**Figure \@ref(fig:DC7viz2019)**).
 SMV and SRH are neighboring American Viticulture Areas in Southern California (**Figure \@ref(fig:fig1)A**).
-While few genes are induced in SMV samples, *ADH4* is the top induced gene (FIGURE).
+While few genes are induced in SMV samples, *ADH4* is the top induced gene (**Figure \@ref(fig:annotatedplts19ava)**).
 Alcohol dehydrogenase plays an important role in fermentation by catabolising acetaldehyde to ethanol and regenerating the redox cofactor NAD+.
 However Adh1p is the primary isoform responsible for this reaction during wine fermentation [@ciriacy1975genetics].
 This may indicate that formation of fusel alcohols was more prevalent in SMV fermentations via action of Adh4p as the last step in the Ehrlich pathway [@dickinson2003catabolism].
 
-Diffusion component six separated the 64 hour samples, with the OR samples and RRV2 samples segregating to one extrema (FIGURE).
-While no pathways were enriched among genes that were induced in these samples, genes associated with nitrogen limitation (*DAL5*, *PUT1*, *PUT2*; [@rossignol2003genome]) where induced while genes involved in ammonia metabolism (*MEP3*, *SSY1*, *AUA1*) were induced at the other extrema (FIGURE).
+Diffusion component six separated the 64 hour samples, with the OR samples and RRV2 samples segregating to one extrema (**Figure \@ref(fig:annotatedplts19ava)**).
+While no pathways were enriched among genes that were induced in these samples, genes associated with nitrogen limitation (*DAL5*, *PUT1*, *PUT2*; [@rossignol2003genome]) where induced while genes involved in ammonia metabolism (*MEP3*, *SSY1*, *AUA1*) were induced at the other extrema (**Figure \@ref(fig:annotatedplts19ava)**).
 Diffusion component 6 correlated with initial NOPA and NH~3~ in grape must (initial NOPA: R^2^ = 0.62, p < 0.001, initial NH~3~: R^2^ = 0.60, p < 0.001), driven by low initial nitrogen in OR1, OR2, and RRV2 (**Figure \@ref(fig:DC6nitrogen)**).
 Interestingly, while initial nitrogen was low and OR1, OR2, and RRV2, we supplemented primary fermentations with low nitrogen using diammonia phosphate to a target yeast assimilable nitrogen (YAN) level of 250 mg/L at approximately 24 hours after inoculation.
 Yet, we still detected signatures of nitrogen limitation from for these sites, suggesting that standard commercial remediations may not be sufficient for some fermentations.
@@ -1372,14 +1679,14 @@ ggarrange(nitrogen, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2,
 ```
 
 Interestingly, while diffusion component 8 reflected separation among 112 hour samples with SNC1 and AS2 segregating from other samples (**Figure \@ref(fig:v2019dc2dc3)**), 14 of the 24 genes induced in those samples are of unknown function.
-Cellular response to hydrogen peroxide was enriched among identifiable genes (*DDR2*, *HSP30*), as well as extracellular region (*UTH1*, *AFB1*, *MFA1*), suggesting that the induced genes of unknown function may be involved in these pathways.
+Cellular response to hydrogen peroxide was enriched among identifiable genes (*DDR2*, *HSP30*), as well as extracellular region (*UTH1*, *AFB1*, *MFA1*), suggesting that the induced genes of unknown function may be involved in these pathways (**Figure \@ref(fig:DC8viz2019)**).
 
 Across diffusion components that reflect differences among samples within a stage of fermentation, some fermentations from the same American Viticulture Area segregated similarly across diffusion components.
-Fermentations from OR, AV, and SMV often group together (FIGURE), providing support for the concept of American Viticulture Areas and regional terroir.
+Fermentations from OR, AV, and SMV often group together (**Figure \@ref(fig:allDCs2019)**), providing support for the concept of American Viticulture Areas and regional terroir.
 However, we do not observe grouping among all fermentations from the same American Viticulture Area along all diffusion components.
 For example, samples from AS group together along diffusion component 5 (2 hours) and diffusion component 6 (64 hours), but not in diffusion component 8 (112 hours).
 Interestingly, AS sites are separated by 1 km and yet have detectable variation in *S. cerevisiae* metabolism in primary fermentation.
-Similarly, fermentations from RRV do not cluster together along any diffusion component, suggesting variation in subappellations within the Russian River Valley leads to differential outcomes in wine (FIGURE).
+Similarly, fermentations from RRV do not cluster together along any diffusion component, suggesting variation in subappellations within the Russian River Valley leads to differential outcomes in wine (**Figure \@ref(fig:allDCs2019)**).
 
 ```{r eval = F}
 tmp <- dc19 %>%
@@ -1417,15 +1724,49 @@ While diffusion maps successfully distinguished major and minor differences in f
 To address this, we identified a publicly available time series gene expression profile of the onset of hypoxia in *S. cerevisiae*.
 Hypoxia occurs when a cell becomes oxygen-limited.
 While oxygen is necessary for biosynthesis of some metabolites (e.g. ergosterol, heme), *S. cerevisiae* can grow in anoxic conditions if these metabolites are exogenously supplied [@parks1978metabolism].
-This response is organized by transcription factors and other regulatory proteins in response to heme/oxygen availability, sterol availability, and unsaturated fatty acid availability (summarized in TABLE2). 
+This response is organized by transcription factors and other regulatory proteins in response to heme/oxygen availability, sterol availability, and unsaturated fatty acid availability (summarized in **Table \@ref(tab:hyptbl)**). 
 Heme, sterols, and unsaturated fatty acids require oxygen for biosynthesis, so decreasing concentration of these metabolites triggers activation of transcription factors and their regulators [@parks1978metabolism; @labbe1990tetrapyrrole]. 
 The heme-dependent transcription factors and regulatory proteins include Hap1, the Hap2/3/4/5 complex, Rox1, and Mot3 (reviewed in @kwast1998oxygen). 
-Under normoxia, Hap1 and Hap2/3/4/5 induce genes required for respiration while Rox1 is aided by Mot3 in repressing the expression of hypoxic genes.
-Both Hap1 and the Hap2/3/4/5 complex induce expression of genes outside of aerobia -- namely, Hap1 is necessary for hypoxic growth while Hap2/3/4/5 regulates expression of some genes in a carbon-source dependent manner [@kwast1998oxygen].
+Under normoxia, Hap1 and Hap2/3/4/5 induce genes required for respiration while Rox1 is aided by Mot3 in repressing the expression of hypoxic genes [@klinkenberg2005combinatorial].
+Both Hap1 and the Hap2/3/4/5 complex induce expression of genes outside of aerobia -- namely, Hap1 is necessary for hypoxic growth while Hap2/3/4/5 regulates expression of some genes in a carbon-source dependent manner [@chantrel1998transcriptional; @pinkham1994heme].
 Hap1, Hap2/3/4/5, Rox1, and Mot3 regulate less than half of all hypoxia-induced genes [@becerra2002yeast].
 The transcription factor Mga2 activates lipid synthesis under hypoxia in a unsaturated fatty acid dependent manner [@kandasamy2004regulation].
 Similarly, paralogous transcription factors Upc2 and Ecm22 regulate induction and repression of sterol biosynthesis, sterol transport, and DAN/TIR cell wall genes in a sterol-dependent manner [@davies2006role]. 
 Ecm22 activates constitutive expression of sterol biosynthetic targets under normal laboratory conditions while Upc2 takes over under hypoxia (reviewed in @jorda2020regulation).
+
+```{r hyptbl}
+hyp_tbl <- "
+1 | Oxygen sensing strategy   | Protein | Role   
+2 | Heme dependent | Hap1 | Aerobic activation of respiratory genes. Required for hypoxic growth.\\textsuperscript{1} 
+3 |Heme dependent | Rox1 | Aerobic repression of hypoxic genes.\\textsuperscript{2}
+4 |Heme dependent | Mot3 | Aids Rox1 in aerobic repression of hypoxic genes.\\textsuperscript{2}
+5 |Heme dependent | Hap2/Hap3/Hap4/Hap5 | Aerobic activation of respiratory genes.\\textsuperscript{3} Regulates some genes in a heme-independent, carbon-source dependent manner.\\textsuperscript{4}
+6 |Sterol dependent | Upc2 | Hypoxic activation of sterol biosynthesis, sterol transport, and DAN/TIR cell wall genes.\\textsuperscript{5}
+7 |Sterol dependent | Ecm22 | Aerobic repression of sterol biosynthesis, sterol transport, and DAN/TIR cell wall genes.\\textsuperscript{5}
+8 |Unsaturated fatty acid dependent  | Mga2 | Hypoxic activation of lipid synthesis.\\textsuperscript{6}
+9 |Unknown | Tpa1 | Represses Hap1 activity. Likely functions as an oxygen sensor through a prolyl-4-hydroxylase domain. Also   modulates translation termination by reducing stop codon read through.\\textsuperscript{7} 
+10 |Unknown | Ett1 | No known role in hypoxia. Modulates translation termination by reducing stop codon read through. The Ett1 homolog in \\textit{S. pombe}, Nro1, performs oxygen-regulated degradation of the sterol-dependent transcription factor Sre1.\\textsuperscript{7} 
+11 |Unknown | Dsc1/Dsc2/Dsc3/Dcs4 | Tul1/Dsc2/Dsc3/Ubx3 forming the Tul1 E3 ligase. No known role in hypoxia. Performs protein quality control under non-stress conditions. Homolog of \\textit{S. pombe} Dsc1 E3 ligase which is required for proteolytic activation of fungal sterol regulatory element-binding protein transcription factors.\\textsuperscript{8}"
+
+df <- read.delim(textConnection(hyp_tbl), header=T, sep="|", strip.white=TRUE, stringsAsFactors=FALSE, row.names = 1)
+row.names(df)<-NULL
+kable(df, caption = "Transcription factors and regulatory proteins involved in the hypoxis response in \\textit{S. cerevisiae}. \\textsuperscript{1}(ref:chantrel1998transcriptional), \\textsuperscript{2}(ref:klinkenberg2005combinatorial), \\textsuperscript{3}(ref:pinkham1985cloning), \\textsuperscript{4}(ref:pinkham1994heme), \\textsuperscript{5}(ref:davies2006role), \\textsuperscript{6}(ref:kandasamy2004regulation), \\textsuperscript{7}(ref:henri2010structural), \\textsuperscript{8}(ref:tong2014identification).", format = "latex", booktabs = T, escape = F, 
+      col.names = c("Oxygen sensing strategy", "Protein", "Role")) %>%
+  kable_styling(font_size = 9)%>%
+  column_spec(1, width = "1in") %>%
+  column_spec(2, width = "1.5in") %>%
+  column_spec(3, width = "3.5in") %>%
+  collapse_rows(columns = 1, valign = "bottom")
+```
+(ref:chantrel1998transcriptional) @chantrel1998transcriptional
+(ref:klinkenberg2005combinatorial) @klinkenberg2005combinatorial
+(ref:pinkham1985cloning) @pinkham1985cloning
+(ref:pinkham1994heme) @pinkham1994heme
+(ref:davies2006role) @davies2006role
+(ref:kandasamy2004regulation) @kandasamy2004regulation
+(ref:henri2010structural) @henri2010structural
+(ref:tong2014identification) @tong2014identification
+
 
 Interestingly, *S. cerevisiae* hypoxic regulators deviate from those in other fungi such as the fission yeast *Schizosaccharomyces pombe*.
 Highly conserved sterol regulatory element-binding proteins (SREBPs) regulate biosynthesis of lipids, ergosterol, and heme during the *S. pombe* hypoxic response [@todd2006sterol].
@@ -1590,17 +1931,17 @@ dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, show_genes = F){
     up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top)
   } else if(show_genes == F) {
     down_tbl <- rbind(ego_bp_down_top, ego_cc_down_top, ego_mf_down_top, ekegg_down_top) %>%
-      dplyr::select(-geneID)
+      dplyr::select(-geneID, -enrichment, Pathway = Description)
     up_tbl <- rbind(ego_bp_up_top, ego_cc_up_top, ego_mf_up_top, ekegg_up_top) %>%
-      dplyr::select(-geneID)
+      dplyr::select(-geneID, -enrichment, Pathway = Description)
   }
 
 
   # PRUNE PATHWAY NAMES TO FIRST X WORDS
-  up_tbl$Description <- gsub(" \\(.*\\)", "", up_tbl$Description)
-  up_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", up_tbl$Description)
-  down_tbl$Description <- gsub(" \\(.*\\)", "", down_tbl$Description)
-  down_tbl$Description <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", down_tbl$Description)
+  up_tbl$Pathway <- gsub(" \\(.*\\)", "", up_tbl$Pathway)
+  up_tbl$Pathway <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", up_tbl$Pathway)
+  down_tbl$Pathway <- gsub(" \\(.*\\)", "", down_tbl$Pathway)
+  down_tbl$Pathway <-gsub(" SSU.* from tricistronic rRNA transcript", " rRNA", down_tbl$Pathway)
   
   # PLOT ANNOTATION TABLES
   if(nrow(up_tbl) == 0){
@@ -1623,7 +1964,7 @@ dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, show_genes = F){
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), sample, time, deletion, category)
   
-  plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time, shape = category)) +
+  plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
     geom_jitter() +
     scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
     labs(x = dc_num) +
@@ -1667,13 +2008,13 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
   
   if(nrow(up_most) == 0){
     # make an empty table if there are no results
-    up_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+    up_tbl <- ggtexttable(data.frame("Pathway" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
   } else{
     up_tbl <- ggtexttable(up_most, rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
   }
   if(nrow(down_most) == 0){
     # make an empty table if there are no results
-    down_tbl <- ggtexttable(data.frame("No_sig_genes" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
+    down_tbl <- ggtexttable(data.frame("Pathway" = ""), rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
   } else {
     down_tbl <- ggtexttable(down_most,rows = NULL, theme = ttheme(base_size = 6, base_style = "classic", padding = unit(c(1, 1), "mm")))
   }
@@ -1683,7 +2024,6 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), time, deletion, category, sample)
   
-  if(color_by == "time"){
     plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
       geom_jitter() +
       scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
@@ -1693,27 +2033,6 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
             axis.text.y = element_blank(),
             axis.title.y = element_blank(),
             legend.position = "bottom") 
-  } else if(color_by == "deletion") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = deletion)) +
-      geom_jitter() +
-      theme_minimal() +
-      labs(x = dc_num) +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") 
-  } else if(color_by == "category") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = category)) +
-      geom_jitter() +
-      theme_minimal() +
-      labs(x = dc_num) +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") 
-  } else {
-      message("Please try a legitimate color values, either brix, ava, or hr")
-    }
 
   # Plot chart and table into one object
   return(ggarrange(down_tbl, plt_dc, up_tbl, ncol = 3))
@@ -1795,7 +2114,9 @@ scat1 <- ggplot(data=subset(dc_hyp, deletion != "HAP1"), aes(x = DC1, y = 0, col
   geom_jitter(size = 2) +
   scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
   theme_minimal() +
-  theme(plot.title.position = "plot") 
+  theme(plot.title.position = "plot", 
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
 
 # add WT
 scat1 + 
@@ -1862,7 +2183,7 @@ Across seven microarray studies, 11 genes (3 aerobic, 8 hypoxic) were consistent
 Of genes differentially expressed along diffusion component 1, we identified 8 of 11 hypoxia genes with a log~2~ fold change greater than two, and 11 of 11 genes with p < 0.05.
 We then compared our results to a time-series RNA-sequencing profile of wild type *S. cerevisiae* during hypoxic response [@bendjilali2017time].
 Two hundred thirty-nine of 291 (82.1%) aerobic genes were significantly induced prior to exposure to nitrogen, while 422 of 519 (81.3%) hypoxic genes were significantly induced after prolonged exposure to nitrogen (**Table \@ref(tab:bendjilali)**). 
-We found that genes induced at time zero were enriched in pathways like ribosome biogenesis, oxidative phosphorylation, and sterol metabolic process, while genes induced after prolonged exposure to nitrogen were enriched in pathways like oxidation reduction process, cell wall, glycogen metabolic process, and glycolysis/gluconeogenesis (FIGURE).
+We found that genes induced at time zero were enriched in pathways like ribosome biogenesis, oxidative phosphorylation, and sterol metabolic process, while genes induced after prolonged exposure to nitrogen were enriched in pathways like oxidation reduction process, cell wall, glycogen metabolic process, and glycolysis/gluconeogenesis (**Figure \@ref(fig:DC1vizhyp)**).
 This matches our knowledge of the hypoxic transition in yeast [@kwast2002genomic; @bendjilali2017time].
 These results indicate that the first diffusion component captured the global shift in gene expression during the hypoxic shift.
 
@@ -1954,11 +2275,31 @@ The latter findings suggests that Ett1 maybe involved in hypoxic response in a T
 
 While a dominant global shift in gene expression occured in reponse to hypoxia, diffusion component 6 differentiated a transient shift at 30 minutes.
 Such transient shifts in gene expression have been previously identified at this time in the hypoxic response and shown to partially overlap with the environmental stress response [@bendjilali2017time].
-We found that knockouts *upc2*, *upc2/ecm22*, *mga2*, and to a lesser extent *ecm22*, failed to make this transition and segragated with the wild type time zero samples (FIGURE - JUST 30 MIN SAMPLES + WILDTYPE ALONG DC6. LABEL GENES LISTED IN THIS PARAGRAPH).
+We found that knockouts *upc2*, *upc2/ecm22*, *mga2*, and to a lesser extent *ecm22*, failed to make this transition and segragated with the wild type time zero samples (**Figure \@ref(fig:dc6labelled)**).
 This suggests Upc2, Ecm22, and Mga2 mediate the hypoxic response at this time.
-However, pathways related to redox balance were enriched among genes induced in the 30 minute samples (NADPH regeneration, pentose-phosphate shunt, oxidoreductase activity) along with pathways like glycolysis/gluconeogenesis and fatty acid degradation (FIGURE), suggesting mutants were unable to accomplish these functions. 
-In contrast, iron homeostasis and transport pathways were enriched in genes induced in *upc2*, *upc2/ecm22*, *mga2* samples (FIGURE).
+However, pathways related to redox balance were enriched among genes induced in the 30 minute samples (NADPH regeneration, pentose-phosphate shunt, oxidoreductase activity) along with pathways like glycolysis/gluconeogenesis and fatty acid degradation (**Figure \@ref(fig:DC6vizhyp)**), suggesting mutants were unable to accomplish these functions. 
+In contrast, iron homeostasis and transport pathways were enriched in genes induced in *upc2*, *upc2/ecm22*, *mga2* samples (**Figure \@ref(fig:DC6vizhyp)**).
 This suggests that the maintenance of redox balance is a critical regulatory function of Upc2 and Mga2 at 30 minutes of hypoxia.
+
+```{r dc6labelled, fig.height = 2, fig.cap = "Diffusion component 6 separates a 30 minute transition in hypoxia. Many mutants segregate with wild type cells, but many do not, indicating that the transcriptome in these mutants was not remodeled at this timepoint. Only samples taken at 30 minutes are plotted."}
+dc6_hyp <- dc_hyp %>%
+  filter(time == 30) %>%
+  mutate(deletion = gsub("_", "\\/", deletion))
+
+scat1 <- ggplot(data=subset(dc6_hyp, deletion != "HAP1"), aes(x = DC6, y = 0, color = time, label = deletion)) +
+  geom_jitter(size = 2, position = position_jitter(seed = 2)) +
+  scale_color_manual(values = brewer.pal(9, "Blues")[4]) +
+  theme_minimal() +
+  theme(plot.title.position = "plot", 
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  geom_label_repel(position = position_jitter(seed = 2), fontface = "italic", size = 2)
+
+# add WT
+scat1 + 
+  geom_point(data=subset(dc6_hyp, deletion == "HAP1"), aes(x = DC6, y = 0), shape = 17, size = 4, color = "black")+
+  geom_point(data=subset(dc6_hyp, deletion == "HAP1"), aes(x = DC6, y = 0), shape = 17, size = 3, fill = "black")
+```
 
 The 30 minute transient response was additionally blunted in *tpa1/ett1* but not in *tpa1* or *ett1* alone, suggesting that Tpa1 and Ett1 may interact synergistically to aid in hypoxic remodeling after 30 minutes of low oxygen.
 Tpa1 and Ett1 physically interact [@krogan2006global].
@@ -2009,7 +2350,7 @@ ggplotly(scat)
 
 Interestingly, while some mutants segregated to the extrema of some diffusion components, the deleted transcription factor was not reciprocally induced by samples at the opposite extrema, indicating that expression of transcription factor targets drives more similarity between samples than expression of the transcription factors themselves.
 This is expected given the role that transcription factors play in activating and repressing many genes.
-One exception to this is diffusion component 7, where *mot3* and *rox1/mot3* knockouts segregate to one extrema, and *MOT3* is induced at the other extrema.
+One exception to this is diffusion component 7, where *mot3* and *rox1/mot3* knockouts segregate to one extrema, and *MOT3* is induced at the other extrema (**Figure \@ref(fig:tophypoxia)**).
 
 <!-- TR TO DO differentiate T=0 samples -->
 <!-- Knockouts of aerobic repressors of hypoxic genes (*rox1*, *mot3*, *ecm22*) and aerobic activators of aerobic genes (*hap4*, *hap5*, *hap2/hap3/hap4/hap5*) displayed altered transcriptomes at time zero during aerobic metabolism. -->
@@ -2020,9 +2361,9 @@ One exception to this is diffusion component 7, where *mot3* and *rox1/mot3* kno
 
 While many of the genes that were differentially expressed along diffusion components encode proteins of known function, genes induced at both extrema of diffusion component 4 are unknown.
 Knockouts *upc2*, *mga2*, and to a lesser extent *ecm22* from all time points segregated to one extrema, while knockouts *dsc2*, *dsc3*, *dsc5*, *tpa1*, *hap1*, *hap2* and *hap3* from times zero and five minutes segregated to the other.
-Of 581 genes induced in the former set, 387 are unknown including nine of the top 10 induced genes, while of 139 genes induced in the latter set, 53 are of unknown function including eight of the top 10 induced genes.
-Induced genes that were annotated were enriched in pathways like ion transport and iron ion transport.
-Among genes that were induced in the *upc2* *mga2* knockouts, pathways involved in meiosis such as spore wall assembly and reproductive process were enriched.
+Of 581 genes induced in the former set, 387 are unknown including nine of the top 10 induced genes, while of 139 genes induced in the latter set, 53 are of unknown function including eight of the top 10 induced genes (**Figure \@ref(fig:tophypoxia)**).
+Induced genes that were annotated were enriched in pathways like ion transport and iron ion transport (**Figure \@ref(fig:DC4vizhyp)**).
+Among genes that were induced in the *upc2* *mga2* knockouts, pathways involved in meiosis such as spore wall assembly and reproductive process were enriched  (**Figure \@ref(fig:DC4vizhyp)**).
 Given that meitotically produced spores are a highly adaptive state for stress resistance (reviewed in @bernstein2013evolutionary), this suggests that Upc2 and Mga2 are needed for hypoxic survival and without these transcription factors *S. cerevisiae* resorts to sporulation.
 Unknown genes induced in these samples may be involved in meitotic sporulation.
 
@@ -2032,6 +2373,15 @@ In this study, we paired diffusion mapping with differential expression and capt
 This method revealed differences in primary fermentation of Pinot noir wine from 15 vineyard sites, as well as regulatory functions of yeast transcription factors during hypoxia.
 Diffusion mapping was especially well suited for these studies as in both cases groups (fermentations, cell cultures) were asynchronous in progression through transcriptome shifts with respect to absolute time.
 
+Through our analysis of wine fermentations, we found vineyard-site specific gene expression patterns that correlated with *H. uvarum* metabolic activity and initial nitrogen composition of grape must. 
+While these factors are known to impact wine outcomes in controlled laboratory fermentations, our analysis demonstrates that these factors are detectable amongst large chemical and biological diversity in grape musts and fermentations.
+
+Through our analysis of hypoxia onset, we found that deletion of some transcription factors arrests progression through hypoxic transcriptome remodeling, while others make little noticeable impact on the transcriptome compared to wild type.
+Surprisingly, as transcriptomes of *ett1*, *tpa1*, and *dsc1/2/3/5* deviated from wild type phenotype along multiple diffusion components, this analysis support a role for these proteins in hypoxia response.
+These proteins are homologs of *S. pombe* SREBP hypoxic response genes, and while Tpa1 represses Hap1 through an unknown mechanism, these proteins have no other known role in the hypoxic response.
+In this experiment, no exogenous heme or ergosterol were supplied. 
+These conditions may lead to involvement of Ett1, Tpa1, and Dsc1/2/3/5 in hypoxia, however more research is needed to fully elucide the roles of these proteins in hypoxia.
+<!-- The Dsc1/2/3/5 complex is involved in cellular protein homeostasis under normal laboratory conditions [@tong2014indentification], and our data further support a role for  -->
 
 # Methods
 
@@ -2115,416 +2465,6 @@ upset_brix <- UpSetR::upset(fromList(brix_list), nsets = 8, nintersects = 200,
 plot_grid(as.grob(upset_brix_17), as.grob(upset_brix_19), 
           as.grob(upset_dc1), as.grob(upset_brix),
           ncol = 2, labels = c("A", "B", "C", "D"))
-```
-
-```{r all_dc17_brix}
-dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc5_17p <-ggplot(dc17, aes(x = DC5, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc6_17p <-ggplot(dc17, aes(x = DC6, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc7_17p <-ggplot(dc17, aes(x = DC7, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc8_17p <-ggplot(dc17, aes(x = DC8, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc9_17p <-ggplot(dc17, aes(x = DC9, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc10_17p <-ggplot(dc17, aes(x = DC10, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-all_dc_17 <- ggarrange(dc1_17p, dc2_17p, dc3_17p, dc4_17p, dc5_17p, dc6_17p, 
-                       dc7_17p, dc8_17p, dc9_17p, dc10_17p, legend = "bottom",
-                       ncol = 1, common.legend = T, labels = c("B", "", "", "", "", "", "", "", "", ""))
-```
-
-```{r all_dc19_brix}
-dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_viridis_c() +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc9_19p <-ggplot(dc19, aes(x = DC9, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc10_19p <-ggplot(dc19, aes(x = DC10, y = 0, color = brix, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-all_dc_19 <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
-                       dc7_19p, dc8_19p, dc9_19p, dc10_19p, ncol = 1, legend = "bottom",
-                       common.legend = T, labels = c("B", "", "", "", "", "", "", "", "", ""))
-```
-
-```{r all_dc17_ava}
-dc1_17p <- ggplot(dc17, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc5_17p <-ggplot(dc17, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc6_17p <-ggplot(dc17, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc7_17p <-ggplot(dc17, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc8_17p <-ggplot(dc17, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc9_17p <-ggplot(dc17, aes(x = DC9, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc10_17p <-ggplot(dc17, aes(x = DC10, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.3, .3)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-all_dc_17_ava <- ggarrange(dc1_17p, dc2_17p, dc3_17p, dc4_17p, dc5_17p, dc6_17p, 
-                           dc7_17p, dc8_17p, dc9_17p, dc10_17p, legend = "bottom",
-                           ncol = 1, common.legend = T, labels = c("A", "", "", "", "", "", "", "", "", ""))
-```
-
-```{r all_dc19_ava}
-dc1_19p <- ggplot(dc19, aes(x = DC1, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-          "AS" = as, "SMV" = smv, "SRH" = srh))
-
-dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.51, .51)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc9_19p <-ggplot(dc19, aes(x = DC9, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc10_19p <-ggplot(dc19, aes(x = DC10, y = 0, color = ava, label = ava_id)) +
-  geom_jitter(alpha = .8) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-all_dc_19_ava <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
-                           dc7_19p, dc8_19p, dc9_19p, dc10_19p, ncol = 1, legend = "bottom",
-                           common.legend = T, labels = c("A", "", "", "", "", "", "", "", "", ""))
-```
-
-```{r allDCs2017, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2017 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
-ggarrange(all_dc_17_ava, all_dc_17, legend = "bottom")
-```
-
-```{r allDCs2019, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2019 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
-ggarrange(all_dc_19_ava, all_dc_19, legend = "bottom")
 ```
 
 ```{r try_all_by_all_dc_corr, eval = F}
@@ -2641,21 +2581,22 @@ ggcorrplot(cor(dc_lfc_all), type = "upper", show.diag = F, lab = T,
   theme(legend.position = "bottom")
 ```
 
-```{r annotatedplts17, fig.height = 4, fig.width = 6, eval = T, fig.cap="**A**, **B**"}
+```{r annotatedplts17, eval = F, fig.height = 4, fig.width = 6, fig.cap="**A**, **B**"}
 ggarrange(dc_top_diffex_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix"),
           dc_top_diffex_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "ava"),
           nrow = 2, labels = c("A", "B"))
 ```
 
-```{r annotatedplts19, fig.height = 8, fig.width = 6, eval = T, fig.cap="**A**, **B**"}
-ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC1", dc_con = dc1_19, color_by = "brix"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr"),
+<!-- TOP GENES -->
+
+```{r annotatedplts19hr, fig.height = 6, fig.width = 6, eval = T, fig.cap="Top genes induced along diffusion components that separate stages of fermentation in the 2019 vintage. Colored by hour at which samples were taken."}
+ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr"),
           dc_top_diffex_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr"),
           dc_top_diffex_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr"),
-          nrow = 4, labels = c("A", "B", "C", "D"))
+          nrow = 3, labels = c("A", "B", "C"))
 ```
 
-```{r annotatedplts192, fig.height = 8, fig.width=6, eval = T, fig.cap="**A**, **B**"}
+```{r annotatedplts19ava, fig.height = 8, fig.width=6, eval = T, fig.cap="Top genes induced along diffusion components that separate fermentations within a stage of fermentation in the 2019 vintage. Colored by American Viticulture Area (AVA) of each sample."}
 ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "ava"),
           dc_top_diffex_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, color_by = "ava"),
           dc_top_diffex_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava"),
@@ -2663,166 +2604,43 @@ ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_b
           nrow = 4, labels = c("A", "B", "C", "D"))
 ```
 
-```{r annotatedplts193, fig.height = 4, fig.cap="**A**, **B**"}
-ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_by = "ava"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava"),
-          nrow = 2, labels = c("A", "B"))
-```
+<!-- ENRICHMENT -->
 
-## Enrichment analysis 
 
-```{r DC1viz2017, fig.height = 7.9, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc17, dc_num = "DC1", dc_con = dc1_17, color_by = "brix", show_genes = F)
-```
-
-```{r DC2viz2017, eval = F, fig.height = 7.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2017 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc17, dc_num = "DC2", dc_con = dc2_17, color_by = "brix", show_genes = F)
-```
-
-```{r DC1viz2019, fig.height = 8, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 1 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC1", dc_con = dc1_19, color_by = "brix", show_genes = F)
-```
-
-```{r DC2viz2019, fig.height = 6.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+```{r DC2viz2019, fig.height = 6.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 2 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
 dc_top_enrich_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr", show_genes = F)
 ```
 
-```{r DC3viz2019, fig.height = 6, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr", show_genes = T)
+```{r DC3viz2019, fig.height = 7.5, fig.cap= "Gene set enrichment for differentially expressed genes along diffusion component 3 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr", show_genes = F)
 ```
 
-```{r DC4viz2019, fig.height = 3.2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+```{r DC4viz2019, fig.height = 3.2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
 dc_top_enrich_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr", show_genes = F)
 ```
 
-```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
+```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
 dc_top_enrich_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "hr", show_genes = F)
-```
-
-```{r DC6viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 6 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, color_by = "ava", show_genes = F)
-```
-
-```{r DC7viz2019, fig.height = 3, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 7 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava", show_genes = F)
-```
-
-```{r DC8viz2019, fig.height = 1.7, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 8 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava", show_genes = T)
-```
-
-```{r DC9viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 9 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC9", dc_con = dc9_19, color_by = "ava", show_genes = F)
-```
-
-```{r DC10viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 10 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value. Log~2~ fold change values reflect the total change in expression across the diffusion component."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC10", dc_con = dc10_19, color_by = "ava", show_genes = F)
-```
-
-```{r test, eval = F, include = F, eval = F}
-gene <- 'YPR065W' # ROX1
-gene <- 'YMR070W' # MOT3
-gene <- "YLR228C" # ECM22
-gene <- 'YDR213W' # UPC2
-gene <- 'YIR033W' # MGA2
-gene <- 'YGL055W' # OLE1
-gene <- 'YJR150C' # DAN1
-gene <- 'YDR044W' # HEM13
-gene <- 'YDL014W' # ZUO1
-gene <- 'YHL016C' # DUR3
-gene <- 'YJR152W' # DAL5
-gene <- 'YOR192C' # thi72
-gene <- 'YOR143C' # thi80
-Y <- dc_y19$E[gene, ]
-dc19$Y = Y
-ggplotly(ggplot(dc19, aes(y = Y, x = DC4, label = ava_id)) +
-  geom_point(color = "grey", alpha = .7) +
-  # ggtitle(paste(gene, ", ", 
-  #               dc2_top %>% filter(ORF == gene) %>% dplyr::select(COMMON),
-  #               ": Log2FC = ", 
-  #               dc2_top %>% filter(ORF == gene) %>% dplyr::select(logFC) %>% mutate(logFC = round(logFC, digits = 3))))+
-  theme_minimal() +
-  labs(y = "normalized log expression value") +
-  #geom_text(x = -.05, y = 12.4, label=lm_eqn(dc, 'Y', 'DC2'), parse=T) +
-  geom_smooth(method='lm'))
-
-```
-
-```{r, eval = F}
-tmp <- ggplot(dc17, aes(x = DC2, y = DC3, color = brix, label = ava_id)) +
-  geom_jitter() +
-  scale_color_viridis_c() +
-  #scale_color_tableau(palette = "Tableau 20") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  ggtitle("2017") 
-ggplotly(tmp)
-tmp <- ggplot(dc17, aes(x = DC2, y = DC3, color = ava, label = brix)) +
-  geom_jitter() +
-  #scale_color_viridis_c() +
-  scale_color_tableau(palette = "Tableau 20") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  ggtitle("2017")
-tmp
-ggplotly(tmp)
-# DC1: brix
-# DC2: late ferm; brix
-# DC3: ?
-# DC4: ?
-# DC5: ?
-# DC7: ?
-
-p <- ggplot(dc19, aes(x = DC6, y = DC7, color = brix, label = ava_id)) +
-  geom_jitter() +
-  scale_color_viridis_c() +
-  #scale_color_tableau(palette = "Tableau 20") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5)) +
-  ggtitle("2019") 
-ggplotly(p)
-# DC1: brix
-# DC2: early fermentation differences
-# DC3: Wine from inoculum samples
-# DC4: early ferm
-# DC5: late ferm; brix
-# DC6: early ferm
-# DC7: early ferm
-
 ```
 
 ## Hypoxia
 
-
-```{r plot_top_hypoxia, eval = F, fig.height = 5, fig.cap= "Figure"}
-
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC3", dc_con = dc3_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC4", dc_con = dc4_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC5", dc_con = dc5_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC7", dc_con = dc7_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC8", dc_con = dc8_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC9", dc_con = dc9_hyp, color_by = "time")
-dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC10", dc_con = dc10_hyp, color_by = "time")
-# dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC11", dc_con = dc11_hyp, color_by = "time")
-# dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC12", dc_con = dc12_hyp, color_by = "time")
-# dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC13", dc_con = dc13_hyp, color_by = "time")
-
+```{r tophypoxia, fig.height = 4, fig.cap= "Top genes induced along diffusion components during the hypoxic response. Colored by time at which samples were taken."}
+plt_dc4_top_hyp <- dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC4", dc_con = dc4_hyp)
+plt_dc7_top_hyp <- dc_top_diffex_plot_hyp(dc = dc_hyp, dc_num = "DC7", dc_con = dc7_hyp)
+ggarrange(plt_dc4_top_hyp, plt_dc7_top_hyp, nrow = 2)
 ```
 
+```{r DC1vizhyp, fig.height = 6, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 1 during onset of hypoxia. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp)
+```
 
-```{r hypoxia_enrich, eval = F}
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC2", dc_con = dc2_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC3", dc_con = dc3_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC4", dc_con = dc4_hyp, color_by = "time")
-# dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC5", dc_con = dc5_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC7", dc_con = dc7_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC9", dc_con = dc9_hyp, color_by = "time")
-dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC10", dc_con = dc10_hyp, color_by = "time")
+```{r DC4vizhyp, fig.height = 3, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 4 during onset of hypoxia. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp)
+```
+
+```{r DC6vizhyp, fig.height = 3, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 6 during onset of hypoxia. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
+dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC6", dc_con = dc6_hyp)
 ```
 
 ```{r TEST_plot_hypoxia, eval=F}
