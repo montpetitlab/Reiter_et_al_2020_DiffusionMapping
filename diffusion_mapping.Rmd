@@ -5,7 +5,7 @@ author:
 - Taylor Reiter
 - Rachel Montpetit
 - ...
-- C. Titus Brown--(do you want to be on the paper?)
+- C. Titus Brown
 - Ron Runnebaum
 - Ben Montpetit
 date: "`r format(Sys.time(), '%d %B, %Y')`"
@@ -23,7 +23,7 @@ header-includes:
 - \usepackage{setspace}\singlespacing
 keep_tex: yes
 output:
-  bookdown::pdf_document2:
+  bookdown::word_document2:
     fig_caption: yes
     toc: false
 ---
@@ -1186,7 +1186,7 @@ all_dc_19_ava <- ggarrange(dc1_19p, dc2_19p, dc3_19p, dc4_19p, dc5_19p, dc6_19p,
                            common.legend = T, labels = c("A", "", "", "", "", "", "", ""))
 ```
 
-```{r allDCs2019, fig.height= 9, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2019 vintage colored by **A** AVA and **B** hour. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
+```{r allDCs2019, fig.height= 7.5, fig.cap = "One-dimensional plots of diffusion components 1-10 for the 2019 vintage colored by **A** AVA and **B** hour. Diffusion components capture different latent structure in the dataset. Each component represents a different relationship among samples."}
 ggarrange(all_dc_19_ava, all_dc_19_hr, legend = "bottom")
 ```
 
@@ -1330,7 +1330,7 @@ dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
         axis.title.y = element_blank()) 
 
 all_dc_17 <- ggarrange(dc1_17p, dc2_17p, legend = "bottom",
-                       ncol = 1, common.legend = T, c("B", ""))
+                       ncol = 1, common.legend = T, labels = c("B", ""))
 ```
 
 ```{r all_dc17_ava}
@@ -1358,7 +1358,7 @@ all_dc_17_ava <- ggarrange(dc1_17p, dc2_17p, legend = "bottom",
                            ncol = 1, common.legend = T, labels = c("A", ""))
 ```
 
-```{r allDCs2017, fig.height= 3, fig.cap = "One-dimensional plots of diffusion components 1 and 2 for the 2017 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the dataset. Unlike in the 2019 vintage, samples in lower diffusion components do not cluster, potentially indicating a data quality issue that was remediated in the 2019 vintage through the use of UMI barcodes."}
+```{r allDCs2017, fig.height= 3, fig.cap = "One-dimensional plots of diffusion components 1 and 2 for the 2017 vintage colored by **A** AVA and **B** brix. Diffusion components capture different latent structure in the data set. Unlike in the 2019 vintage, samples in lower diffusion components do not cluster, potentially indicating a data quality issue that was remediated in the 2019 vintage through the use of UMI barcodes."}
 ggarrange(all_dc_17_ava, all_dc_17, legend = "bottom")
 ```
 
@@ -1600,7 +1600,7 @@ ggplot(dc19_w_v19, aes(x = DC5, y =  Hanseniaspora_uvarum, color = ava)) +
 #   geom_point()
 ```
 
-Diffusion component 7 predominantly captured separation in 16 hour samples, where unlike at 2 hours, fermentations from SMV1 and SMV2 segregated the opposite extrema from SRH1 (**Figure \@ref(fig:DC7viz2019)**).
+Diffusion component 7 predominantly captured separation in 16 hour samples, where unlike at 2 hours, fermentations from SMV1 and SMV2 segregated the opposite extrema from SRH1 (**Figure \@ref(fig:allDCs2019)**).
 SMV and SRH are neighboring American Viticulture Areas in Southern California (**Figure \@ref(fig:fig1)A**).
 While few genes are induced in SMV samples, *ADH4* is the top induced gene (**Figure \@ref(fig:annotatedplts19ava)**).
 Alcohol dehydrogenase plays an important role in fermentation by catabolising acetaldehyde to ethanol and regenerating the redox cofactor NAD+.
@@ -2620,7 +2620,11 @@ dc_top_enrich_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr", 
 ```
 
 ```{r DC5viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
-dc_top_enrich_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "hr", show_genes = F)
+dc_top_enrich_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "ava", show_genes = F)
+```
+
+```{r DC8viz2019, fig.height = 2, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 5 in the 2019 vintage. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
+dc_top_enrich_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava", show_genes = F)
 ```
 
 ## Hypoxia
