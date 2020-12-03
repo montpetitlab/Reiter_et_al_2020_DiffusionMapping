@@ -4,7 +4,6 @@ always_allow_html: yes
 author: 
 - Taylor Reiter
 - Rachel Montpetit
-- ...
 - Ron Runnebaum
 - C. Titus Brown
 - Ben Montpetit
