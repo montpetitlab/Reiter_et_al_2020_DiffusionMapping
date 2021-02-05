@@ -435,6 +435,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
     dplyr::select(COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>%
     dplyr::select(-logFC_adj) %>%
+    arrange(desc(logFC)) %>%
     head(n = 10)
   
   down_most <- dc_con %>%
@@ -1337,7 +1338,7 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
   # dc <- dc19
   # dc_num <- "DC7"
   # dc_con <- dc7_19
-  # color_by = "ava"
+  # color_by = "hr"
   # separate to induced and repressed -- note that filtering for 
   # log2fc is done in dc_contrast() when normalize_logFC = T. 
   # default is a normalizes logFC > abs(2) 
@@ -1348,6 +1349,7 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
     dplyr::select(COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>%
     dplyr::select(-logFC_adj) %>%
+    arrange(desc(logFC)) %>%
     head(n = 10)
   
   down_most <- dc_con %>%
