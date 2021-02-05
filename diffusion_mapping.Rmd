@@ -432,7 +432,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
   
   up_most <- dc_con %>%
     filter(logFC_adj > 0) %>%
-    dplyr::select(COMMON, logFC_adj) %>%
+    dplyr::select(Gene = COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>%
     dplyr::select(-logFC_adj) %>%
     arrange(desc(logFC)) %>%
@@ -440,7 +440,7 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
   
   down_most <- dc_con %>%
     filter(logFC_adj < 0) %>%
-    dplyr::select(COMMON, logFC_adj) %>%
+    dplyr::select(Gene = COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>% 
     dplyr::select(-logFC_adj) %>%
     head(n = 10)
@@ -509,14 +509,14 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
 dc_top_table <- function(dc_con){
   up_most <- dc_con %>%
     filter(logFC > 0) %>%
-    dplyr::select(ORF, COMMON, logFC_adj) %>%
+    dplyr::select(ORF, Gene = COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>%
     dplyr::select(-logFC_adj) %>%
     head(n = 15)
   
   down_most <- dc_con %>%
     filter(logFC < 0) %>%
-    dplyr::select(ORF, COMMON, logFC_adj) %>%
+    dplyr::select(ORF, Gene = COMMON, logFC_adj) %>%
     mutate(logFC = round(logFC_adj, digits = 1)) %>%
     dplyr::select(-logFC_adj) %>%
     head(n = 15)
@@ -529,7 +529,7 @@ dc_top_table <- function(dc_con){
   } else {
     blank_rows_to_add <- 30-nrow(most)
     blank_rows <- data.frame(ORF = rep("", blank_rows_to_add),
-                             COMMON = rep("", blank_rows_to_add),
+                             Gene = rep("", blank_rows_to_add),
                              logFC = rep("", blank_rows_to_add))
     most <- rbind(most, blank_rows)
     return(most)
