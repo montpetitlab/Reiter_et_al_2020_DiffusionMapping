@@ -382,49 +382,43 @@ dc_top_enrich_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
   
-  if(color_by == "brix"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix)) +
-      geom_point(position = position_jitter(seed = 42)) +
-      scale_color_viridis_c() +      
-      labs(x = dc_num, color = "Brix") +
+  if(plot_by == "ava"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = ava_id, color=hr)) +
+      geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") + 
+      geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+      scale_color_brewer(palette = "Paired", name = "time (hour)")  +
       theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") 
-  } else if(color_by == "ava") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
-      geom_point(position = position_jitter(seed = 42)) +
+      theme(legend.position = "none") +  
+      scale_y_discrete(limits=rev) +
+      labs(color = expression(degree*Brix), y = "site", x = dc_num) 
+  } else if(plot_by == "hr"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") +  
+      geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+      scale_color_viridis_c() +
       theme_minimal() +
-      labs(x = dc_num, color = "AVA") +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") +
-      scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                    "AS" = as, "SMV" = smv, "SRH" = srh)) 
-  } else if(color_by == "hr"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")))) +
-      geom_point() +
-      scale_color_brewer(palette = "Paired", name = "hour") + 
-      geom_point(position = position_jitter(seed = 42)) +
-      labs(x = dc_num) +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom")
-    }
-
+      theme(legend.position = "none") +  
+      scale_y_discrete(limits=rev) +
+      labs(color = expression(degree*Brix), y = "time (hours)", x = dc_num) 
+  } else {
+    message("Please try a legitimate color values, either brix, ava, or hr")
+  }
+  
   # Plot chart and table into one object
   return(ggarrange(down_tbl, plt_dc, up_tbl, ncol = 3))
 }
 
-dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "hr")){
+dc_top_diffex_plot <- function(dc, dc_num, dc_con, plot_by = c("ava", "hr")){
   # dc <- dc19
-  # dc_num <- "DC7"
-  # dc_con <- dc7_19
-  # color_by = "ava"
+  # dc_num <- "DC2"
+  # dc_con <- dc2_19
+  # plot_by = "ava"
   # separate to induced and repressed -- note that filtering for 
   # log2fc is done in dc_contrast() when normalize_logFC = T. 
   # default is a normalizes logFC > abs(2) 
@@ -465,39 +459,31 @@ dc_top_diffex_plot <- function(dc, dc_num, dc_con, color_by = c("brix", "ava", "
   # for ggplot across all plots
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), brix, ava_id, ava, hr, sample)
-  
-  if(color_by == "brix"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = brix)) +
-      geom_point(position = position_jitter(seed = 42)) +
+
+  if(plot_by == "ava"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = ava_id, color=hr)) +
+      geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") + 
+      geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+      scale_color_brewer(palette = "Paired", name = "time (hour)")  +
+      theme_minimal() +
+      theme(legend.position = "none") +  
+      scale_y_discrete(limits=rev) +
+      labs(color = expression(degree*Brix), y = "site", x = dc_num) 
+  } else if(plot_by == "hr"){
+    plt_dc <- ggplot(dc, aes(x = DC, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") +  
+      geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
       scale_color_viridis_c() +
-      labs(x = dc_num, color = "Brix") +
       theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") 
-  } else if(color_by == "ava") {
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = ava)) +
-      geom_point(position = position_jitter(seed = 42)) +
-      theme_minimal() +
-      labs(x = dc_num, color = "AVA") +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom") +
-      scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                    "AS" = as, "SMV" = smv, "SRH" = srh)) 
-  } else if(color_by == "hr"){
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")))) +
-      geom_point() +
-      scale_color_brewer(palette = "Paired", name = "hour") + 
-      geom_point(position = position_jitter(seed = 42)) +
-      labs(x = dc_num) +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
-            legend.position = "bottom")
+      theme(legend.position = "none") +  
+      scale_y_discrete(limits=rev) +
+      labs(color = expression(degree*Brix), y = "time (hours)", x = dc_num) 
   } else {
       message("Please try a legitimate color values, either brix, ava, or hr")
     }
@@ -564,63 +550,6 @@ info$ava <- factor(info$ava, levels = c('OR', 'AV', 'SNC', 'RRV', 'CRN',
                                         'AS', 'SMV','SRH'))
 ```
 
-```{r diffusion_mapping_17, include = F}
-## preprocess counts
-counts17 <- read_tsv("v2017/outputs/counts/raw_counts.tsv") %>%
-  filter(grepl(pattern = "^Y", x = gene)) %>%
-  as.data.frame() %>%
-  column_to_rownames("gene")
-colnames(counts17) <- gsub("_readcounts.txt", "", colnames(counts17))
-m17 <- sweep(counts17, 2, colSums(counts17), `/`)
-m17 <- t(m17)
-
-## build diffusion map
-## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
-
-nm <- m17 %>% norm_mat()          # normalize
-aff <- nm %>%
-  get_euc(., n.threads = 1) %>% 
-  threshold(., top_k = 10)      # make affinity matrix
-Lij <- aff %>% get_laplac()     # compute laplacian
-eig <- eigen(Lij)               # smallest keig vectors
-evl <- eig$values %>%           # get eigenvalues
-  Re() %>%
-  round(., digits = 10)
-evc <- eig$vectors %>%          # get eigenvectors
-  Re() %>%
-  round(., digits = 10)
-
-# create objects containing diffusion components
-for(d in 1:length(evl)){
-  assign(paste('dim', d, sep = '_'),
-         Re(evc[, rank(evl) == (d + 1)])
-  )
-}
-
-k_eig <- 10                     # specify num of variables you want to keep
-dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
-  t() %>%
-  as.data.frame()               # merge in array
-
-colnames(dat) <- paste(paste('DC', 1:(k_eig), sep = ''))
-rownames(dat) <- rownames(Lij)  # add labels
-
-dc17 <- dat %>%                  # join with metadata
-  rownames_to_column("sample") %>%
-  left_join(info, by = c("sample" = "id"))
-```
-
-```{r plot_eig_vals17, eval = F}
-tmp <- data.frame(val = eig$values) %>%
-  arrange(val) %>%
-  mutate(num = 1:length(eig$values))
-
-ggplot(tmp, aes(y = val, x = num)) + 
-  geom_point() +
-  theme_minimal() +
-  ggtitle("k=10 2017")
-```
-
 ```{r diffusion_mapping_19, include = F}
 counts19 <- read_tsv("v2019/outputs/counts/raw_counts.tsv") %>%
   dplyr::filter(grepl(pattern = "^Y", x = gene)) %>%
@@ -684,23 +613,6 @@ ggplot(tmp, aes(y = val, x = num)) +
   ggtitle("k=10 2019")
 ```
 
-```{r diffex17}
-d0_17 <- DGEList(counts17)                         # initialize the DGE object
-d17 <- calcNormFactors(d0_17)
-dc_mm17 <- model.matrix(~dc17$DC1 + ~dc17$DC2 + ~dc17$DC3 + dc17$DC4 + dc17$DC5 + 
-                          dc17$DC6 + dc17$DC7 + dc17$DC8 + dc17$DC9 + dc17$DC10)
-dc_y17 <- voom(d17, dc_mm17, plot = F)
-dc_fit17 <- lmFit(dc_y17, dc_mm17)
-dc1_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 2) # Test "DC1" coefficient
-dc2_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 3) # Test "DC2" coefficient
-dc3_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 4) # Test "DC3" coefficient
-dc4_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 5) # Test "DC4" coefficient
-dc5_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 6) # Test "DC5" coefficient
-dc6_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 7) # Test "DC6" coefficient
-dc7_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 8) # Test "DC7" coefficient
-dc8_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 9) # Test "DC8" coefficient
-```
-
 ```{r diffex19}
 d0_19 <- DGEList(counts19)              # initialize the DGE object
 d19 <-calcNormFactors(d0_19)            # calculate normalization factors
@@ -720,14 +632,6 @@ dc8_19 <- dc_contrast(dc_fit = dc_fit19, coeff = 9) # Test "DC8" coefficient
 
 ```{r supplemental_table_wine, eval = F}
 library(xlsx)
-write.xlsx(dc1_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC1_2017", row.names=FALSE)
-write.xlsx(dc2_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC2_2017", append = T, row.names=FALSE)
-write.xlsx(dc3_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC3_2017", append = T, row.names=FALSE)
-write.xlsx(dc4_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC4_2017", append = T, row.names=FALSE)
-write.xlsx(dc5_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC5_2017", append = T, row.names=FALSE)
-write.xlsx(dc6_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC6_2017", append = T, row.names=FALSE)
-write.xlsx(dc7_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC7_2017", append = T, row.names=FALSE)
-write.xlsx(dc8_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC8_2017", append = T, row.names=FALSE)
 write.xlsx(dc1_19, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC1_2019", append = T, row.names=FALSE)
 write.xlsx(dc2_19, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC2_2019", append = T, row.names=FALSE)
 write.xlsx(dc3_19, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC3_2019", append = T, row.names=FALSE)
@@ -739,17 +643,15 @@ write.xlsx(dc8_19, file="supplemental_tables/supplementary_table1.xlsx", sheetNa
 ```
 
 ```{r brixplot, fig.width = 3.25, fig.height = 5.5}
-brix17 <- read_csv("../2020-pn-tmp/site_metadata/2017_fermentation_log.csv")
 brix19 <- read_csv("../2020-pn-tmp/site_metadata/2019_fermentation_log.csv") 
-brix <- rbind(brix17, brix19) %>%
+brix19 <- brix19 %>%
   filter(!is.na(hours_post_innoculation))%>%
   dplyr::select(-time) %>%
   pivot_longer(cols = A:D, names_to = "tank", values_to = "brix") %>%
   mutate(ava = gsub("[123]", "", ava_id))
-brix_plot <- ggplot(brix, aes(x = hours_post_innoculation, y = brix, color = ava_id, shape = tank)) +
+brix_plot <- ggplot(brix19, aes(x = hours_post_innoculation, y = brix, color = ava_id, shape = tank)) +
   geom_line(alpha = .7) +
-  facet_wrap(~year, ncol = 1, nrow = 2) +
-  labs(x = "time (hours)", y = "Brix", color = "site", shape = "tank") +
+  labs(x = "time (hours)", y = expression(degree*Brix), color = "site", shape = "tank") +
   theme_minimal() +
   theme(legend.position = "bottom",
         strip.text.x = element_text(size = 14)) +
@@ -761,16 +663,6 @@ brix_plot <- ggplot(brix, aes(x = hours_post_innoculation, y = brix, color = ava
                                 'CRN1', 'AS1', 'AS2', 'SMV1', 'SMV2','SRH1')) +
   scale_shape(guide = 'none')
 brix_plot
-```
-
-```{r diffex_brix_17}
-brix_counts17  <- counts17                    # non-wine samples already filtered
-d0_17 <- DGEList(brix_counts17)               # initialize the DGE object
-d17 <- calcNormFactors(d0_17)
-brix_mm17 <- model.matrix(~dc17$brix)
-brix_y17 <- voom(d17, brix_mm17, plot = F)
-brix_fit17 <- lmFit(brix_y17, brix_mm17)
-brix_17 <- dc_contrast(dc_fit = brix_fit17, coeff = 2) # Test brix coefficient
 ```
 
 ```{r diffex_brix_19, eval = T}
@@ -786,91 +678,58 @@ brix_fit19 <- lmFit(brix_y19, brix_mm19)
 brix_19 <- dc_contrast(dc_fit = brix_fit19, coeff = 2) # Test brix coefficient
 ```
 
-```{r brixcorr}
-# make sure that everything has the same number of genes by not filtering by expression
-# consider doing this from the outset (see above code) instead of just for this
-# figure
-
+```{r lm_brix_dc1_19}
 brix_19_all <- dc_contrast(dc_fit = brix_fit19, coeff = 2, 
                            adj.p.filt = 1, filter_logFC = F) %>%
   arrange(ORF) %>%
   mutate(logFC = logFC*-1)
-brix_17_all <- dc_contrast(dc_fit = brix_fit17, coeff = 2,
-                           adj.p.filt = 1, filter_logFC = F) %>%
-  arrange(ORF) %>%
-  mutate(logFC = logFC*-1)
-dc1_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 2, 
-                          adj.p.filt = 1, filter_logFC = F) %>%
-  arrange(ORF)
+
 dc1_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 2,
                           adj.p.filt = 1, filter_logFC = F) %>%
   arrange(ORF)
 
-# all.equal(brix_19_all$ORF, dc1_19_all$ORF, brix_17_all$ORF, dc1_17_all$ORF)
+#all.equal(brix_19_all$ORF, dc1_19_all$ORF)
 
-all_l2fc <- data.frame(brix19 = brix_19_all$logFC,
-                       brix17 = brix_17_all$logFC,
-                       DC1_17 = dc1_17_all$logFC,
-                       DC1_19 = dc1_19_all$logFC) 
-corr_l2fc <- cor(all_l2fc)
-colnames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
-rownames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
+all_l2fc <- data.frame(brix19 = brix_19_all$logFC_adj * -1,
+                       DC1_19 = dc1_19_all$logFC_adj) 
 
-
-corr_plt <- ggcorrplot(corr_l2fc, type = "upper", show.diag = T, lab = T, 
-                       hc.order = T, digits = 3, lab_size = 3, tl.cex = 9, 
-                       lab_col = "white", show.legend = T,  legend.title =  "",
-                       colors = brewer.pal(n = 3, name = "RdYlBu")) + 
-  scale_fill_gradient2(low = brewer.pal(n = 3, name = "RdYlBu")[1], 
-                       high = brewer.pal(n = 3, name = "RdYlBu")[3], 
-                       mid = brewer.pal(n = 3, name = "RdYlBu")[2], 
-                       midpoint = 0, limit = c(0, 1), space = "Lab", 
-                       name = "") +
-  theme(legend.position = "bottom")
+lm_plt <- ggplot(all_l2fc, aes(x = brix19, y = DC1_19)) +
+  geom_hex() +
+  theme_minimal() +
+  scale_fill_continuous(high = "#3D3D3D", low = "#EBECF0") +
+  labs(x = expression(log[2]~fold~change~degree*Brix),
+       y = expression(log[2]~fold~change~DC1))
 ```
 
 ```{r dc1}
-p17 <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
-  geom_point(position = position_jitter(seed = 42)) +
+#library(raincloudplots)
+library(ggbeeswarm2)
+dc19$hr <- factor(dc19$hr, levels = c(2, 6, 16, 64, 112))
+p19 <- ggplot(dc19, aes(x = DC1, y = hr, color=brix)) +
+  geom_beeswarm(size=2, spacing =1, alpha = .5, corral="wrap", corral.width = 1) +
   scale_color_viridis_c() +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) +
-  labs(title = "2017", color = "Brix") 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-p19 <- ggplot(dc19, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
-  geom_point(position = position_jitter(seed = 42)) +
-  scale_color_viridis_c() +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) +
-  labs(title = "2019", color = "Brix") 
 
-# ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 1, nrow =2)
-ggarrange(ggarrange(p17, p19, ncol = 1, nrow = 2, common.legend = T, legend = "bottom", labels = c(" ", " ")), corr_plt, labels = c("", " "), ncol = 2, nrow = 1)
+# p19 <- ggplot(dc19, aes(y = DC1, x = hr, color=brix)) +
+#   #geom_point(alpha = .5, size = 5) +
+#   scale_color_viridis_c() +
+#   theme_minimal() +
+#   labs(color = expression(degree*Brix), x = "hour") +
+#   #geom_flat_violin(position = position_nudge(x = .3, y = 0), alpha = 1, fill = "black") +
+#   #geom_point(aes(x = hr, color = brix), position = position_jitter(width = .15), size = 2, alpha = 0.7) +
+#   geom_flat_violin(position = position_nudge(x = .15, y = 0), alpha = 1, fill = "black") +
+#   geom_point(aes(x = hr, color = brix), size = 2, alpha = 0.7) +
+#   scale_x_discrete(limits=rev)+
+#   coord_flip() 
+ggarrange(p19, lm_plt, ncol = 2, legend = "bottom", labels = c(" ", " "), widths = c(2, 1))
 ```
 
 ```{r numdiffex}
 num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4", 
                                                  "DC5", "DC6", "DC7", "DC8"),
-                         induced = c(length(filter(dc1_17, logFC > 0)$ORF),
-                                     length(filter(dc2_17, logFC > 0)$ORF),
-                                     length(filter(dc3_17, logFC > 0)$ORF),
-                                     length(filter(dc4_17, logFC > 0)$ORF),
-                                     length(filter(dc5_17, logFC > 0)$ORF),
-                                     length(filter(dc6_17, logFC > 0)$ORF),
-                                     length(filter(dc7_17, logFC > 0)$ORF),
-                                     length(filter(dc8_17, logFC > 0)$ORF)),
-                         repressed = c(length(filter(dc1_17, logFC < 0)$ORF),
-                                       length(filter(dc2_17, logFC < 0)$ORF),
-                                       length(filter(dc3_17, logFC < 0)$ORF),
-                                       length(filter(dc4_17, logFC < 0)$ORF),
-                                       length(filter(dc5_17, logFC < 0)$ORF),
-                                       length(filter(dc6_17, logFC < 0)$ORF),
-                                       length(filter(dc7_17, logFC < 0)$ORF),
-                                       length(filter(dc8_17, logFC < 0)$ORF)),
                          induced = c(length(filter(dc1_19, logFC > 0)$ORF),
                                      length(filter(dc2_19, logFC > 0)$ORF),
                                      length(filter(dc3_19, logFC > 0)$ORF),
@@ -890,164 +749,196 @@ num_diffex <- data.frame(diffusion_component = c("DC1", "DC2", "DC3", "DC4",
 )
 
 kable(num_diffex, "latex", booktabs = T, col.names = c("diffusion component", "induced", "repressed", "induced", "repressed"),
-      caption = 'Number of significantly differentially expressed genes for the top diffusion components for the 2017 and 2019 vintages') %>%
-  kable_styling(font_size = 9) %>%
-  add_header_above(c(" " = 1, "2017" = 2, "2019" = 2), align = "l", escape = F)
+      caption = 'Number of significantly differentially expressed genes for the top diffusion components.') %>%
+  kable_styling(font_size = 9) 
+  #add_header_above(c(" " = 1, "2017" = 2, "2019" = 2), align = "l", escape = F)
 ```
 
 ```{r all_dc19_hour}
-dc2_19p <- ggplot(dc19, aes(x = DC2, y = 0, color =  factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
+dc2_19p <- ggplot(dc19, aes(x = DC2, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(dc19$DC2) + 2 * sd(dc19$DC2), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC2) - 2 * sd(dc19$DC2), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC2) + sd(dc19$DC2), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC2) - sd(dc19$DC2), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
   xlim(c(-0.2, .2)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-dc3_19p <- ggplot(dc19, aes(x = DC3, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
+dc3_19p <- ggplot(dc19, aes(x = DC3, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(dc19$DC3) + 2 * sd(dc19$DC3), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc19$DC3) - 2 * sd(dc19$DC3), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc19$DC3) + sd(dc19$DC3), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc19$DC3) - sd(dc19$DC3), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  xlim(c(-0.2, .2)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+dc4_19p <- ggplot(dc19, aes(x = DC4, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(dc19$DC4) + 2 * sd(dc19$DC4), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc19$DC4) - 2 * sd(dc19$DC4), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc19$DC4) + sd(dc19$DC4), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc19$DC4) - sd(dc19$DC4), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
   xlim(c(-0.2, .2)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-dc4_19p <- ggplot(dc19, aes(x = DC4, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
-  xlim(c(-0.2, .2)) +
+dc5_19p <- ggplot(dc19, aes(x = DC5, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(dc19$DC5) + 2 * sd(dc19$DC5), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC5) - 2 * sd(dc19$DC5), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC5) + sd(dc19$DC5), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC5) - sd(dc19$DC5), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlim(c(-0.4, 0.4)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-dc5_19p <-ggplot(dc19, aes(x = DC5, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
+dc6_19p <- ggplot(dc19, aes(x = DC6, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(dc19$DC6) + 2 * sd(dc19$DC6), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC6) - 2 * sd(dc19$DC6), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC6) + sd(dc19$DC6), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC6) - sd(dc19$DC6), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlim(c(-0.4, 0.4)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)")
 
-dc6_19p <-ggplot(dc19, aes(x = DC6, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
+dc7_19p <- ggplot(dc19, aes(x = DC7, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(dc19$DC7) + 2 * sd(dc19$DC7), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC7) - 2 * sd(dc19$DC7), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC7) + sd(dc19$DC7), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC7) - sd(dc19$DC7), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlim(c(-0.4, 0.4)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-dc7_19p <-ggplot(dc19, aes(x = DC7, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
+dc8_19p <- ggplot(dc19, aes(x = DC8, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(dc19$DC8) + 2 * sd(dc19$DC8), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC8) - 2 * sd(dc19$DC8), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC8) + sd(dc19$DC8), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC8) - sd(dc19$DC8), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlim(c(-0.4, 0.4)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc8_19p <-ggplot(dc19, aes(x = DC8, y = 0, color = factor(hr, levels = c("0", "2", "6", "16", "64", "112")), label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_brewer(palette = "Paired", name = "hour")  +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 ```
 
 ```{r all_dc19_ava}
-dc2_19p_ava <- ggplot(dc19, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc2_19p_ava <- ggplot(dc19, aes(x = DC2, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC2) + 2 * sd(dc19$DC2), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC2) - 2 * sd(dc19$DC2), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC2) + sd(dc19$DC2), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC2) - sd(dc19$DC2), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
   xlim(c(-0.2, .2)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc3_19p_ava <- ggplot(dc19, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc3_19p_ava <- ggplot(dc19, aes(x = DC3, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC3) + 2 * sd(dc19$DC3), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC3) - 2 * sd(dc19$DC3), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC3) + sd(dc19$DC3), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC3) - sd(dc19$DC3), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
   xlim(c(-0.2, .2)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc4_19p_ava <- ggplot(dc19, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+
+dc4_19p_ava <- ggplot(dc19, aes(x = DC4, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC4) + 2 * sd(dc19$DC4), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC4) - 2 * sd(dc19$DC4), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC4) + sd(dc19$DC4), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC4) - sd(dc19$DC4), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
   xlim(c(-0.2, .2)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc5_19p_ava <-ggplot(dc19, aes(x = DC5, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc5_19p_ava <- ggplot(dc19, aes(x = DC5, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC5) + 2 * sd(dc19$DC5), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC5) - 2 * sd(dc19$DC5), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC5) + sd(dc19$DC5), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC5) - sd(dc19$DC5), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  xlim(c(-0.4, 0.4)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc6_19p_ava <-ggplot(dc19, aes(x = DC6, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc6_19p_ava <- ggplot(dc19, aes(x = DC6, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC6) + 2 * sd(dc19$DC6), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC6) - 2 * sd(dc19$DC6), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC6) + sd(dc19$DC6), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC6) - sd(dc19$DC6), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  xlim(c(-0.4, 0.4)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc7_19p_ava <-ggplot(dc19, aes(x = DC7, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc7_19p_ava <- ggplot(dc19, aes(x = DC7, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC7) + 2 * sd(dc19$DC7), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC7) - 2 * sd(dc19$DC7), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC7) + sd(dc19$DC7), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC7) - sd(dc19$DC7), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  xlim(c(-0.4, 0.4)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 
-dc8_19p_ava <-ggplot(dc19, aes(x = DC8, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  xlim(c(-0.51, .51)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+dc8_19p_ava <- ggplot(dc19, aes(x = DC8, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(dc19$DC8) + 2 * sd(dc19$DC8), linetype = "dotted") +
+  geom_vline(xintercept = -mean(dc19$DC8) - 2 * sd(dc19$DC8), linetype = "dotted") +  
+  geom_vline(xintercept = mean(dc19$DC8) + sd(dc19$DC8), linetype = "dashed") +
+  geom_vline(xintercept = -mean(dc19$DC8) - sd(dc19$DC8), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  xlim(c(-0.4, 0.4)) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
 ```
 
 ```{r DC2DC42019, fig.height= 3.7}
 
+# combine relevant hr plts
+dc2_dc4_19_hr <- ggarrange(dc2_19p, dc3_19p, dc4_19p, ncol = 1, legend = "none",
+                           common.legend = T, labels = c("A", "", ""))
+
 # combine relevant ava plts
 dc2_dc4_19_ava <- ggarrange(dc2_19p_ava, dc3_19p_ava, dc4_19p_ava, 
                             ncol = 1, legend = "none",
-                            common.legend = T, labels = c("A", "", ""))
+                            common.legend = T, labels = c("B", "", ""))
 
-# combine relevant hr plts
-dc2_dc4_19_hr <- ggarrange(dc2_19p, dc3_19p, dc4_19p, ncol = 1, legend = "none",
-                           common.legend = T, labels = c("B", "", ""))
-
-ggarrange(dc2_dc4_19_ava, dc2_dc4_19_hr, legend = "none")
+ggarrange(dc2_dc4_19_hr, dc2_dc4_19_ava, legend = "none")
 ```
 
 ```{r DC5DC82019, fig.height= 4}
@@ -1055,92 +946,17 @@ ggarrange(dc2_dc4_19_ava, dc2_dc4_19_hr, legend = "none")
 # combine relevant ava plts
 dc5_dc8_19_ava <- ggarrange(dc5_19p_ava, dc6_19p_ava, dc7_19p_ava, dc8_19p_ava, 
                             ncol = 1, legend = "none", common.legend = T, 
-                            labels = c("A", "", "", ""))
+                            labels = c("B", "", "", ""))
 
 # combine relevant hr plts
 dc5_dc8_19_hr <- ggarrange(dc5_19p, dc6_19p, dc7_19p, dc8_19p, ncol = 1, 
                            legend = "none", common.legend = T, 
-                           labels = c("B", "", "", ""))
-
-ggarrange(dc5_dc8_19_ava, dc5_dc8_19_hr, legend = "none")
+                           labels = c("A", "", "", ""))
+pdf("DC3-DC8_revision.pdf", width = 6.5, height = 8.5)
+ggarrange(dc5_dc8_19_hr, dc5_dc8_19_ava, legend = "none")
+dev.off()
 ```
 
-```{r all_dc17_brix}
-dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_viridis_c() +
-  labs(color = "Brix") +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank())
-
-dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_viridis_c() +
-  labs(color = "Brix") +
-  xlim(c(-0.3, .3)) +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_viridis_c() +
-  xlim(c(-0.3, .3)) +
-  labs(color = "Brix") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-all_dc_17 <- ggarrange(dc2_17p, dc3_17p, dc4_17p,
-                       ncol = 1, common.legend = T, labels = c("B", "", ""))
-```
-
-```{r all_dc17_ava}
-dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  labs(color = "AVA") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  labs(color = "AVA") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
-  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
-  xlim(c(-0.3, .3)) +
-  labs(color = "AVA") +
-  theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5),
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
-
-all_dc_17_ava <- ggarrange(dc2_17p, dc3_17p, dc4_17p,
-                           ncol = 1, common.legend = T, labels = c("A", "", ""))
-```
-
-```{r dm2017, fig.height= 3, fig.width = 6}
-ggarrange(all_dc_17_ava, all_dc_17, legend = "none")
-```
 
 ## Diffusion mapping identified global shifts in gene expression during hypoxia
 
@@ -1150,7 +966,7 @@ ggarrange(all_dc_17_ava, all_dc_17, legend = "none")
 tmp2 <- counts %>%
   rownames_to_column("gene") %>%
   filter(gene == "YOL073C") %>%
-  select(contains("NH_78"))
+  dplyr::select(contains("NH_78"))
   
 counts_filt <- counts[rowSums(counts) > 0, ] # remove rows that sum to zero
 dim(counts_filt)
@@ -1168,9 +984,9 @@ orfs <- orf_to_common(tmp2$gene)
 
 ```{r hypoxia_functions}
 dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, show_genes = F){
-  # dc <- dc19
-  # dc_num <- "DC3"
-  # dc_con <- dc3_19
+  # dc <- dc_hyp
+  # dc_num <- "DC1"
+  # dc_con <- dc1_hyp
   # separate to induced and repressed -- note that filtering for 
   # log2fc is done in dc_contrast() when normalize_logFC = T. 
   # default is a normalizes logFC > abs(2) 
@@ -1318,17 +1134,19 @@ dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, show_genes = F){
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), sample, time, deletion, category)
   
-  plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
-    geom_point(position = position_jitter(seed = 42)) +
-    #scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
+  dc$time <- factor(dc$time, levels = c(0, 5,10,30, 60, 120, 180, 240))
+  plt_dc <- ggplot(dc, aes(x = DC, y = time, color = time)) +
+    geom_point(alpha=.7) +
     scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
+    geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+    geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+    geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+    geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") + 
     labs(x = dc_num) +
     theme_minimal() +
+    scale_y_discrete(limits=rev) +
     theme(plot.title = element_text(hjust = 0.5),
-          axis.text.y = element_blank(),
-          axis.title.y = element_blank(),
           legend.position = "bottom") 
-
 
   # Plot chart and table into one object
   return(ggarrange(down_tbl, plt_dc, up_tbl, ncol = 3))
@@ -1380,15 +1198,19 @@ dc_top_diffex_plot_hyp <- function(dc, dc_num, dc_con){
   dc <- dc %>%
     dplyr::select(DC = all_of(dc_num), time, deletion, category, sample)
   
-    plt_dc <- ggplot(dc, aes(x = DC, y = 0, color = time)) +
-      geom_point(position = position_jitter(seed = 42)) +
-      #scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
+  dc$time <- factor(dc$time, levels = c(0, 5,10,30, 60, 120, 180, 240))
+
+    plt_dc <- ggplot(dc, aes(x = DC, y = time, color = time)) +
+      geom_point() +
+      geom_vline(xintercept = mean(dc$DC) + 2 * sd(dc$DC), linetype = "dotted") +
+      geom_vline(xintercept = -mean(dc$DC) - 2 * sd(dc$DC), linetype = "dotted") +  
+      geom_vline(xintercept = mean(dc$DC) + sd(dc$DC), linetype = "dashed") +
+      geom_vline(xintercept = -mean(dc$DC) - sd(dc$DC), linetype = "dashed") +
       scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
       labs(x = dc_num) +
+      scale_y_discrete(limits = rev) +
       theme_minimal() +
       theme(plot.title = element_text(hjust = 0.5),
-            axis.text.y = element_blank(),
-            axis.title.y = element_blank(),
             legend.position = "bottom") 
 
   # Plot chart and table into one object
@@ -1464,27 +1286,26 @@ ggplotly(ggplot(tmp, aes(y = val, x = num)) +
   ggtitle("k=20 hypoxia"))
 ```
 
+
 ```{r DC1hypoxiaWT, fig.height = 3, fig.width= 3.5}
 # "#E8ECFB", "#521A13"
-dc_hyp$time <- as.factor(dc_hyp$time)
-wt_dc1 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC1, y = 0, color = time)) +
-  geom_jitter(size = 3) +
-  #scale_color_manual(values = brewer.pal(9, "Blues")[2:9]) +
-  #scale_color_viridis_d(option = "cividis") +
-  #scale_color_brewer(palette = "PiYG") +
+dc_hyp$time <- factor(dc_hyp$time, levels = c(0, 5, 10, 30, 60, 120, 180, 240))
+wt_dc1 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), 
+                 aes(x = DC1, y = time, color = time)) +
+  geom_point(size = 3) +
+  labs(y = "time (minutes)") +
+  scale_y_discrete(limits=rev) +
   scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
-  theme_minimal() +
-  theme(plot.title.position = "plot", 
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  theme_minimal()
 
-wt_dc6 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), aes(x = DC6, y = 0, color = time)) +
-  geom_jitter(size = 3) +
+wt_dc6 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), 
+                 aes(x = DC6, y = time, color = time)) +
+  geom_point(size = 3) +
+  labs(y = "time (minutes)") +
+  scale_y_discrete(limits=rev) +
   scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
-  theme_minimal() +
-  theme(plot.title.position = "plot", 
-        axis.text.y = element_blank(),
-        axis.title.y = element_blank()) 
+  theme_minimal()
+
 ggarrange(wt_dc1, wt_dc6, legend = "bottom", common.legend = T,
           nrow = 2, labels = c("A", "B"))
 ```
@@ -1830,6 +1651,215 @@ ggarrange(nitrogen, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2,
           common.legend = T, legend = "bottom")
 ```
 
+### strengths over other methods
+
+
+```{r pca19}
+library(DESeq2)
+# check that colnames in counts match rownames in info
+all.equal(colnames(counts19), dc19$sample)
+
+design19 <- dc19 %>%
+  dplyr::select(sample, ava_id, hr,  brix, ava)
+design19$hr <- factor(design19$hr, levels = c(2, 6, 16, 64, 112))
+
+dds19 <- DESeqDataSetFromMatrix(countData = counts19, 
+                                colData = design19, 
+                                design = ~ ava_id + hr)
+vsd19 <-  vst(dds19)
+# perform a PCA on the data in assay(x) for the selected genes
+pca19 <- prcomp(t(assay(vsd19)))
+
+# the contribution to the total variance for each component
+percentVar <- pca19$sdev^2 / sum(pca19$sdev^2)
+
+pca19_df <- pca19$x %>%
+  as.data.frame() %>%
+  rownames_to_column("sample") %>%
+  left_join(design19)
+
+
+pca_brix19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=brix)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_viridis_c()
+
+pca_hr19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=hr)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() 
+
+pca_ava19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=ava)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+
+```
+
+```{r pca17}
+# check that colnames in counts match rownames in info
+all.equal(colnames(counts17), dc17$sample)
+
+design17 <- dc17 %>%
+  dplyr::select(sample, ava_id, hr, brix, ava) %>%
+  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
+  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
+  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
+  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
+  mutate(hr = ifelse(hr > 110, 112, hr))
+
+design17$hr <- factor(design17$hr, levels = c(16, 40, 64, 88, 112))
+
+dds17 <- DESeqDataSetFromMatrix(countData = counts17, 
+                                colData = design17, 
+                                design = ~ ava_id + hr)
+vsd17 <-  vst(dds17)
+# perform a PCA on the data in assay(x) for the selected genes
+pca17 <- prcomp(t(assay(vsd17)))
+
+# the contribution to the total variance for each component
+percentVar <- pca17$sdev^2 / sum(pca17$sdev^2)
+
+pca17_df <- pca17$x %>%
+  as.data.frame() %>%
+  rownames_to_column("sample") %>%
+  left_join(design17)
+
+
+pca_brix17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=brix)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_viridis_c()
+
+pca_hr17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=hr)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() 
+
+pca_ava17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=ava)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+
+```
+
+```{r tsne17}
+library(Rtsne)
+tsne17 <- Rtsne(t(assay(vsd17)), 
+                check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
+dtsne17 <- as.data.frame(tsne17$Y)
+dtsne17$sample <- colnames(assay(vsd17))
+dtsne17 <- left_join(dtsne17, design17)
+tsne_hr17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal()
+
+tsne_brix17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+
+
+tsne_ava17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+```
+
+```{r tsne19}
+tsne19 <- Rtsne(t(assay(vsd19)), 
+                check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
+dtsne19 <- as.data.frame(tsne19$Y)
+dtsne19$sample <- colnames(assay(vsd19))
+dtsne19 <- left_join(dtsne19, design19)
+tsne_hr19 <- ggplot(dtsne19, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal() 
+
+tsne_brix19 <- ggplot(dtsne19, aes(x = V1, y = V2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+
+tsne_ava19 <- ggplot(dtsne19, aes(x = V1, y = V2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+```
+
+```{r DC1_DC219}
+dc19$hr <- factor(dc19$hr, levels = c(2, 6, 16, 64, 112))
+dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
+  geom_point()+
+  theme_minimal() 
+
+dm_ava19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
+  geom_point()+
+  theme_minimal() 
+
+dm_brix19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+```
+
+```{r DC1_DC217}
+dc17_2 <- dc17 %>%
+  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
+  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
+  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
+  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
+  mutate(hr = ifelse(hr > 110, 112, hr))
+dc17_2$hr <- factor(dc17_2$hr, levels = c(16, 40, 64, 88, 112))
+dm_hr17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = hr)) +
+  geom_point()+
+  theme_minimal() 
+
+dm_ava17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+
+dm_brix17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+```
+
+```{r combine_plts}
+plts_hr19 <- ggarrange(dm_hr19, pca_hr19, tsne_hr19, nrow = 3, common.legend = T, legend = "bottom")
+plts_brix19 <- ggarrange(dm_brix19, pca_brix19, tsne_brix19, nrow = 3, common.legend = T, legend = "bottom")
+plts_ava19 <- ggarrange(dm_ava19, pca_ava19, tsne_ava19, nrow = 3, common.legend = T, legend = "bottom")
+
+ggarrange(plts_hr19, plts_brix19, plts_ava19, ncol = 3)
+
+
+plts_hr17 <- ggarrange(dm_hr17, pca_hr17, tsne_hr17, nrow = 3, common.legend = T, legend = "bottom")
+plts_brix17 <- ggarrange(dm_brix17, pca_brix17, tsne_brix17, nrow = 3, common.legend = T, legend = "bottom")
+plts_ava17 <- ggarrange(dm_ava17, pca_ava17, tsne_ava17, nrow = 3, common.legend = T, legend = "bottom")
+
+ggarrange(plts_hr17, plts_brix17, plts_ava17, ncol = 3)
+```
 
 \newpage
 # Supplementary material {-}
@@ -1837,66 +1867,34 @@ ggarrange(nitrogen, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2,
 \beginsupplement
 
 
-```{r brix_upset17}
-brix_list_17 <- list(dc1_17_induced = filter(dc1_17, logFC > 0)$ORF,
-                     dc1_17_repressed = filter(dc1_17, logFC < 0)$ORF,
-                     brix_17_induced = filter(brix_17, logFC > 0)$ORF,
-                     brix_17_repressed = filter(brix_17, logFC < -0)$ORF
-)
-upset_brix_17 <- UpSetR::upset(fromList(brix_list_17), nsets = 8, nintersects = 200, 
-                       order.by = "freq", keep.order = T)
-```
-
 ```{r brix_upset19}
-brix_list_19 <- list(dc1_19_induced = filter(dc1_19, logFC > 0)$ORF,
-                     dc1_19_repressed = filter(dc1_19, logFC < 0)$ORF,
-                     brix_19_induced = filter(brix_19, logFC > 0)$ORF,
-                     brix_19_repressed = filter(brix_19, logFC < 0)$ORF
+brix_list_19 <- list("DC1 induced" = filter(dc1_19, logFC > 0)$ORF,
+                     "DC1 repressed" = filter(dc1_19, logFC < 0)$ORF,
+                     "Brix induced" = filter(brix_19, logFC > 0)$ORF,
+                     "Brix repressed" = filter(brix_19, logFC < 0)$ORF
 )
-upset_brix_19 <- UpSetR::upset(fromList(brix_list_19), nsets = 8, nintersects = 200, 
-                               order.by = "freq", keep.order = T)
+UpSetR::upset(fromList(brix_list_19), nsets = 8, nintersects = 200, 
+              order.by = "freq", keep.order = T)
 ```
 
-```{r dc1_upset}
-dc1_list <- list(dc1_17_induced = filter(dc1_17, logFC > 0)$ORF,
-                 dc1_17_repressed = filter(dc1_17, logFC < 0)$ORF,
-                 dc1_19_induced = filter(dc1_19, logFC > 0)$ORF,
-                 dc1_19_repressed = filter(dc1_19, logFC < 0)$ORF)
-upset_dc1 <- UpSetR::upset(fromList(dc1_list), nsets = 8, nintersects = 200, 
-                   order.by = "freq", keep.order = T)
-```
-
-```{r brix_upset}
-brix_list <- list(brix_17_induced = filter(brix_17, logFC > 0)$ORF,
-                  brix_17_repressed = filter(brix_17, logFC < -0)$ORF,
-                  brix_19_induced = filter(brix_19, logFC > 0)$ORF,
-                  brix_19_repressed = filter(brix_19, logFC < 0)$ORF)
-upset_brix <- UpSetR::upset(fromList(brix_list), nsets = 8, nintersects = 200, 
-                   order.by = "freq", keep.order = T)
-```
-
-```{r upsetgrid, fig.height= 5, fig.cap="Upset plot depicting intersections between differentially expressed genes using diffusion component 1 or brix as continuous variable. **A.** Intersection of differentially expressed genes from the 2017 vintage. **B.** Intersection of genes from the 2019 vintage. **C.** Intersection of genes differentially expressed along diffusion component 1 from the 2017 and 2019 vintages. **D** Intersection of genes differentially expressed relative to change in brix from the 2017 and 2019 vintages."}
-
-plot_grid(as.grob(upset_brix_17), as.grob(upset_brix_19), 
-          as.grob(upset_dc1), as.grob(upset_brix),
-          ncol = 2, labels = c("A", "B", "C", "D"))
-```
 
 <!-- TOP GENES -->
 
 ```{r annotatedplts19hr, fig.height = 6, fig.width = 6, eval = T, fig.cap="Top genes induced along diffusion components that separate stages of fermentation in the 2019 vintage. Colored by hour at which samples were taken."}
-ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, color_by = "hr"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, color_by = "hr"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, color_by = "hr"),
-          nrow = 3, labels = c("A", "B", "C"))
+ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC2", dc_con = dc2_19, plot_by = "hr"),
+          dc_top_diffex_plot(dc = dc19, dc_num = "DC3", dc_con = dc3_19, plot_by = "hr"),
+          dc_top_diffex_plot(dc = dc19, dc_num = "DC4", dc_con = dc4_19, plot_by = "hr"),
+          nrow = 3, labels = c("A", "B", "C"), common.legend = T, legend = "bottom")
 ```
 
 ```{r annotatedplts19ava, fig.height = 8, fig.width=6, eval = T, fig.cap="Top genes induced along diffusion components that separate fermentations within a stage of fermentation in the 2019 vintage. Colored by American Viticulture Area (AVA) of each sample."}
-ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, color_by = "ava"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, color_by = "ava"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, color_by = "ava"),
-          dc_top_diffex_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, color_by = "ava"),
+pdf("dc5-dc8_top_genes_revision.pdf", width=6.5, height = 8.5)
+ggarrange(dc_top_diffex_plot(dc = dc19, dc_num = "DC5", dc_con = dc5_19, plot_by = "ava"),
+          dc_top_diffex_plot(dc = dc19, dc_num = "DC6", dc_con = dc6_19, plot_by = "ava"),
+          dc_top_diffex_plot(dc = dc19, dc_num = "DC7", dc_con = dc7_19, plot_by = "ava"),
+          dc_top_diffex_plot(dc = dc19, dc_num = "DC8", dc_con = dc8_19, plot_by = "ava"),
           nrow = 4, labels = c("A", "B", "C", "D"))
+dev.off()
 ```
 
 <!-- ENRICHMENT -->
@@ -1944,4 +1942,268 @@ kable(df, "latex", booktabs = T, col.names = c("organism", "R\\textsuperscript{2
 
 ```{r DC1vizhyp, fig.height = 6, fig.cap="Gene set enrichment for differentially expressed genes along diffusion component 1 during onset of hypoxia. All enriched categories with p < 0.05 after Bonferroni correction are shown. Pathways on the right side of the figure are induced in samples with a high diffusion component value, while pathways on the left of the figure are induced in samples with a low diffusion component value."}
 dc_top_enrich_plot_hyp(dc = dc_hyp, dc_num = "DC1", dc_con = dc1_hyp)
+```
+
+## 2017 data -- removed from manuscript
+
+```{r diffusion_mapping_17, include = F}
+## preprocess counts
+counts17 <- read_tsv("v2017/outputs/counts/raw_counts.tsv") %>%
+  filter(grepl(pattern = "^Y", x = gene)) %>%
+  as.data.frame() %>%
+  column_to_rownames("gene")
+colnames(counts17) <- gsub("_readcounts.txt", "", colnames(counts17))
+m17 <- sweep(counts17, 2, colSums(counts17), `/`)
+m17 <- t(m17)
+
+## build diffusion map
+## as implemented here: https://doi.org/10.6084/m9.figshare.12864011.v4
+
+nm <- m17 %>% norm_mat()          # normalize
+aff <- nm %>%
+  get_euc(., n.threads = 1) %>% 
+  threshold(., top_k = 10)      # make affinity matrix
+Lij <- aff %>% get_laplac()     # compute laplacian
+eig <- eigen(Lij)               # smallest keig vectors
+evl <- eig$values %>%           # get eigenvalues
+  Re() %>%
+  round(., digits = 10)
+evc <- eig$vectors %>%          # get eigenvectors
+  Re() %>%
+  round(., digits = 10)
+
+# create objects containing diffusion components
+for(d in 1:length(evl)){
+  assign(paste('dim', d, sep = '_'),
+         Re(evc[, rank(evl) == (d + 1)])
+  )
+}
+
+k_eig <- 10                     # specify num of variables you want to keep
+dat <- do.call(mapply, c(FUN = cbind, mget(paste0("dim_", 1:(k_eig))))) %>%
+  t() %>%
+  as.data.frame()               # merge in array
+
+colnames(dat) <- paste(paste('DC', 1:(k_eig), sep = ''))
+rownames(dat) <- rownames(Lij)  # add labels
+
+dc17 <- dat %>%                  # join with metadata
+  rownames_to_column("sample") %>%
+  left_join(info, by = c("sample" = "id"))
+```
+
+```{r plot_eig_vals17, eval = F}
+tmp <- data.frame(val = eig$values) %>%
+  arrange(val) %>%
+  mutate(num = 1:length(eig$values))
+
+ggplot(tmp, aes(y = val, x = num)) + 
+  geom_point() +
+  theme_minimal() +
+  ggtitle("k=10 2017")
+```
+
+```{r diffex17}
+d0_17 <- DGEList(counts17)                         # initialize the DGE object
+d17 <- calcNormFactors(d0_17)
+dc_mm17 <- model.matrix(~dc17$DC1 + ~dc17$DC2 + ~dc17$DC3 + dc17$DC4 + dc17$DC5 + 
+                          dc17$DC6 + dc17$DC7 + dc17$DC8 + dc17$DC9 + dc17$DC10)
+dc_y17 <- voom(d17, dc_mm17, plot = F)
+dc_fit17 <- lmFit(dc_y17, dc_mm17)
+dc1_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 2) # Test "DC1" coefficient
+dc2_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 3) # Test "DC2" coefficient
+dc3_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 4) # Test "DC3" coefficient
+dc4_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 5) # Test "DC4" coefficient
+dc5_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 6) # Test "DC5" coefficient
+dc6_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 7) # Test "DC6" coefficient
+dc7_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 8) # Test "DC7" coefficient
+dc8_17 <- dc_contrast(dc_fit = dc_fit17, coeff = 9) # Test "DC8" coefficient
+```
+
+```{r supplement_2017, eval = F}
+write.xlsx(dc1_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC1_2017", row.names=FALSE)
+write.xlsx(dc2_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC2_2017", append = T, row.names=FALSE)
+write.xlsx(dc3_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC3_2017", append = T, row.names=FALSE)
+write.xlsx(dc4_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC4_2017", append = T, row.names=FALSE)
+write.xlsx(dc5_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC5_2017", append = T, row.names=FALSE)
+write.xlsx(dc6_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC6_2017", append = T, row.names=FALSE)
+write.xlsx(dc7_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC7_2017", append = T, row.names=FALSE)
+write.xlsx(dc8_17, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC8_2017", append = T, row.names=FALSE)
+```
+
+```{r diffex_brix_17}
+brix_counts17  <- counts17                    # non-wine samples already filtered
+d0_17 <- DGEList(brix_counts17)               # initialize the DGE object
+d17 <- calcNormFactors(d0_17)
+brix_mm17 <- model.matrix(~dc17$brix)
+brix_y17 <- voom(d17, brix_mm17, plot = F)
+brix_fit17 <- lmFit(brix_y17, brix_mm17)
+brix_17 <- dc_contrast(dc_fit = brix_fit17, coeff = 2) # Test brix coefficient
+```
+
+```{r brixcorr}
+# make sure that everything has the same number of genes by not filtering by expression
+# consider doing this from the outset (see above code) instead of just for this
+# figure
+
+brix_19_all <- dc_contrast(dc_fit = brix_fit19, coeff = 2, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  mutate(logFC = logFC*-1)
+brix_17_all <- dc_contrast(dc_fit = brix_fit17, coeff = 2,
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  mutate(logFC = logFC*-1)
+dc1_17_all <- dc_contrast(dc_fit = dc_fit17, coeff = 2, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+dc1_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 2,
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+# all.equal(brix_19_all$ORF, dc1_19_all$ORF, brix_17_all$ORF, dc1_17_all$ORF)
+
+all_l2fc <- data.frame(brix19 = brix_19_all$logFC,
+                       brix17 = brix_17_all$logFC,
+                       DC1_17 = dc1_17_all$logFC,
+                       DC1_19 = dc1_19_all$logFC) 
+corr_l2fc <- cor(all_l2fc)
+colnames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
+rownames(corr_l2fc) <- c("Brix 2019", "Brix 2017", "DC1 2017", "DC1 2019")
+
+
+corr_plt <- ggcorrplot(corr_l2fc, type = "upper", show.diag = T, lab = T, 
+                       hc.order = T, digits = 3, lab_size = 3, tl.cex = 9, 
+                       lab_col = "white", show.legend = T,  legend.title =  "",
+                       colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  scale_fill_gradient2(low = brewer.pal(n = 3, name = "RdYlBu")[1], 
+                       high = brewer.pal(n = 3, name = "RdYlBu")[3], 
+                       mid = brewer.pal(n = 3, name = "RdYlBu")[2], 
+                       midpoint = 0, limit = c(0, 1), space = "Lab", 
+                       name = "") +
+  theme(legend.position = "bottom")
+```
+
+```{r dc1_p17}
+p17 <- ggplot(dc17, aes(x = DC1, y = 0, color = brix, label = ava_id)) +
+  geom_point(position = position_jitter(seed = 42)) +
+  scale_color_viridis_c() +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) +
+  labs(title = "2017", color = "Brix") 
+
+```
+
+```{r all_dc17_brix}
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = brix, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_viridis_c() +
+  labs(color = "Brix") +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank())
+
+dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = brix, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_viridis_c() +
+  labs(color = "Brix") +
+  xlim(c(-0.3, .3)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = brix, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_viridis_c() +
+  xlim(c(-0.3, .3)) +
+  labs(color = "Brix") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17 <- ggarrange(dc2_17p, dc3_17p, dc4_17p,
+                       ncol = 1, common.legend = T, labels = c("B", "", ""))
+```
+
+```{r all_dc17_ava}
+dc2_17p <- ggplot(dc17, aes(x = DC2, y = 0, color = ava, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  labs(color = "AVA") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc3_17p <- ggplot(dc17, aes(x = DC3, y = 0, color = ava, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  labs(color = "AVA") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+dc4_17p <- ggplot(dc17, aes(x = DC4, y = 0, color = ava, label = ava_id)) +
+  geom_point(alpha = .8, position = position_jitter(seed = 42)) +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh)) +
+  xlim(c(-0.3, .3)) +
+  labs(color = "AVA") +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5),
+        axis.text.y = element_blank(),
+        axis.title.y = element_blank()) 
+
+all_dc_17_ava <- ggarrange(dc2_17p, dc3_17p, dc4_17p,
+                           ncol = 1, common.legend = T, labels = c("A", "", ""))
+```
+
+```{r dm2017, fig.height= 3, fig.width = 6}
+ggarrange(all_dc_17_ava, all_dc_17, legend = "none")
+```
+
+```{r brix_upset17}
+brix_list_17 <- list(dc1_17_induced = filter(dc1_17, logFC > 0)$ORF,
+                     dc1_17_repressed = filter(dc1_17, logFC < 0)$ORF,
+                     brix_17_induced = filter(brix_17, logFC > 0)$ORF,
+                     brix_17_repressed = filter(brix_17, logFC < -0)$ORF
+)
+upset_brix_17 <- UpSetR::upset(fromList(brix_list_17), nsets = 8, nintersects = 200, 
+                       order.by = "freq", keep.order = T)
+```
+
+```{r dc1_upset}
+dc1_list <- list(dc1_17_induced = filter(dc1_17, logFC > 0)$ORF,
+                 dc1_17_repressed = filter(dc1_17, logFC < 0)$ORF,
+                 dc1_19_induced = filter(dc1_19, logFC > 0)$ORF,
+                 dc1_19_repressed = filter(dc1_19, logFC < 0)$ORF)
+upset_dc1 <- UpSetR::upset(fromList(dc1_list), nsets = 8, nintersects = 200, 
+                   order.by = "freq", keep.order = T)
+```
+
+```{r brix_upset}
+brix_list <- list(brix_17_induced = filter(brix_17, logFC > 0)$ORF,
+                  brix_17_repressed = filter(brix_17, logFC < -0)$ORF,
+                  brix_19_induced = filter(brix_19, logFC > 0)$ORF,
+                  brix_19_repressed = filter(brix_19, logFC < 0)$ORF)
+upset_brix <- UpSetR::upset(fromList(brix_list), nsets = 8, nintersects = 200, 
+                   order.by = "freq", keep.order = T)
+```
+
+```{r upsetgrid, fig.height= 5, fig.cap="Upset plot depicting intersections between differentially expressed genes using diffusion component 1 or brix as continuous variable. **A.** Intersection of differentially expressed genes from the 2017 vintage. **B.** Intersection of genes from the 2019 vintage. **C.** Intersection of genes differentially expressed along diffusion component 1 from the 2017 and 2019 vintages. **D** Intersection of genes differentially expressed relative to change in brix from the 2017 and 2019 vintages."}
+
+plot_grid(as.grob(upset_brix_17), as.grob(upset_brix_19), 
+          as.grob(upset_dc1), as.grob(upset_brix),
+          ncol = 2, labels = c("A", "B", "C", "D"))
 ```
