@@ -960,28 +960,6 @@ dev.off()
 
 ## Diffusion mapping identified global shifts in gene expression during hypoxia
 
-
-```{r TEST_what_is_deleted, eval = F}
-# figure out what dsc1 is 
-tmp2 <- counts %>%
-  rownames_to_column("gene") %>%
-  filter(gene == "YOL073C") %>%
-  dplyr::select(contains("NH_78"))
-  
-counts_filt <- counts[rowSums(counts) > 0, ] # remove rows that sum to zero
-dim(counts_filt)
-tmp <- counts %>% 
-  select(contains("NH_76"))
-tmp$total_counts <- rowSums(tmp)
-tmp2 <- tmp %>%
-  rownames_to_column("gene") %>%
-  select(gene, total_counts) %>%
-  filter(total_counts == 0)
-View(tmp2)
-
-orfs <- orf_to_common(tmp2$gene)
-```
-
 ```{r hypoxia_functions}
 dc_top_enrich_plot_hyp <- function(dc, dc_num, dc_con, show_genes = F){
   # dc <- dc_hyp
@@ -1292,7 +1270,7 @@ ggplotly(ggplot(tmp, aes(y = val, x = num)) +
 dc_hyp$time <- factor(dc_hyp$time, levels = c(0, 5, 10, 30, 60, 120, 180, 240))
 wt_dc1 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), 
                  aes(x = DC1, y = time, color = time)) +
-  geom_point(size = 3) +
+  geom_point(size = 3, alpha = .7) +
   labs(y = "time (minutes)") +
   scale_y_discrete(limits=rev) +
   scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
@@ -1300,7 +1278,7 @@ wt_dc1 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"),
 
 wt_dc6 <- ggplot(data=subset(dc_hyp, deletion == "HAP1"), 
                  aes(x = DC6, y = time, color = time)) +
-  geom_point(size = 3) +
+  geom_point(size = 3, alpha = .7) +
   labs(y = "time (minutes)") +
   scale_y_discrete(limits=rev) +
   scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7")) +
@@ -1334,8 +1312,8 @@ dc2_hyp_all <- dc_contrast(dc_fit = dc_hyp_fit, coeff = 2, adj.p.filt = 1, filte
 
 ```{r supplemental_table_hyp, eval = F}
 library(xlsx)
-write.xlsx(dc1_hyp, file="supplemental_tables/supplementary_table2.xlsx", sheetName="DC1_hypoxia", row.names=FALSE)
-write.xlsx(dc6_hyp, file="supplemental_tables/supplementary_table2.xlsx", sheetName="DC6_hypoxia", append = T, row.names=FALSE)
+write.xlsx(dc1_hyp, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC1_hypoxia", row.names=FALSE)
+write.xlsx(dc6_hyp, file="supplemental_tables/supplementary_table1.xlsx", sheetName="DC6_hypoxia", append = T, row.names=FALSE)
 ```
 
 ```{r dc_hyp1_filt}
@@ -1434,6 +1412,28 @@ oxreg_int <- data.frame(intersection = c("DC1 induced", "DC1 repressed"),
 kable(oxreg_int, "latex", booktabs = T, col.names = c("Intersection", "Hypoxic (519 predicted)", "Aerobic (291 predicted)"),
       caption = 'Consistent hypoxic metabolic remodelling detected by Bendjilali et al. 2017 and this study. Genes induced along diffusion component 1 are involved in the hypoxic reponse while those that are repressed are involved in aerobic metabolism.') %>%
   kable_styling(font_size = 9)
+```
+
+```{r enrichment_against_bendji}
+hypoxic_sets <- hypoxic %>%
+  dplyr::select(oxygen.regulated, gene)
+tmp <- aerobic %>%
+  dplyr::select(oxygen.regulated, gene)
+hypoxic_sets <- rbind(hypoxic_sets, tmp)
+universe <- dc1_hyp_all$ORF[!dc1_hyp_all$ORF %in% hypoxic_sets$gene] 
+universe <- data.frame(oxygen.regulated = "other", gene = universe)
+hypoxic_sets <- rbind(hypoxic_sets, universe)
+table(hypoxic_sets$oxygen.regulated)
+pathway_names <- data.frame(path = c("hypoxic", "aerobic", "other"), 
+                            name = c("hypoxic", "aerobic", "other"))
+dc1_hyp_all_up_enrich <- enricher(gene = dc1_hyp_all_up$ORF, 
+                                  minGSSize = 10, maxGSSize = 1000,
+                                  TERM2GENE = hypoxic_sets, TERM2NAME = pathway_names)
+View(dc1_hyp_all_up_enrich@result)
+dc1_hyp_all_down_enrich <- enricher(gene = dc1_hyp_all_down$ORF, 
+                                    minGSSize = 10, maxGSSize = 1000,
+                                    TERM2GENE = hypoxic_sets)
+dc1_hyp_all_down_enrich@result
 ```
 
 ## Diffusion mapping detected metabolic remodeling throughout wine fermentation 
@@ -1602,7 +1602,7 @@ nitrogen$ava_id <- factor(nitrogen$ava_id,
                                      'SNC1', 'SNC2', 'RRV1', 'RRV2', 'RRV3',  
                                      'CRN1', 'AS1', 'AS2', 'SMV1', 
                                      'SMV2','SRH1'))
-nitrogen <- ggplot(nitrogen, aes(x = ava_id, y = values, fill = ava)) +
+nitrogen_plt <- ggplot(nitrogen, aes(x = ava_id, y = values, fill = ava)) +
   geom_col() +
   facet_wrap(~variable, ncol = 2) +
   labs(x = "vineyard site", y = "concentration") +
@@ -1647,12 +1647,32 @@ nopa_corr <- ggplot(dc19_64, aes(x = DC6, y = initial_nopa, color = ava)) +
                                RRV = rrv, AV = av, OR = or),
                     breaks = c('OR', 'AV', 'SNC', 'RRV', 'CRN', 'AS', 'SMV', 'SRH'))
 
-ggarrange(nitrogen, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2, 
+ggarrange(nitrogen_plt, ggarrange(nh3_corr, nopa_corr, ncol = 2), nrow = 2, 
           common.legend = T, legend = "bottom")
+
+# make plot with extra legend
+legend_plt <- ggplot(nitrogen, aes(x = ava_id, y = values, fill = ava)) +
+  geom_col() +
+  facet_wrap(~variable, ncol = 2) +
+  labs(x = "vineyard site", y = "concentration") +
+  theme_minimal() +
+  theme(legend.position = "bottom",
+        axis.text.x = element_text(angle = 90, vjust = .5),
+        legend.title = element_text(size=12),
+        strip.text.x = element_text(size = 12)) +
+  scale_fill_manual(values = c(SRH = srh, SMV = smv,  
+                                AS = as, SNC = snc,  CRN = crn, 
+                                RRV = rrv, AV = av, OR = or),
+                    breaks = c("OR", 'AV', 'SNC',  'RRV', 
+                               'CRN', 'AS', 'SMV', 'SRH'), 
+                    labels = c("Willamette Valley (OR)", "Anderson Valley (AV)",
+                               "Sonoma Coast (SNC)", "Russian River Valley (RRV)",
+                               "Carneros (CRN)", "Arroyo Seco (AS)", 
+                               "Santa Maria Valley (SMV)", "Santa Rita Hills (SRH)"),
+                    name = "AVA")
 ```
 
 ### strengths over other methods
-
 
 ```{r pca19}
 library(DESeq2)
@@ -1670,6 +1690,13 @@ vsd19 <-  vst(dds19)
 # perform a PCA on the data in assay(x) for the selected genes
 pca19 <- prcomp(t(assay(vsd19)))
 
+# get loadings for pca
+# Positive loadings indicate a variable and a principal component are positively correlated: 
+# an increase in one results in an increase in the other. 
+# Negative loadings indicate a negative correlation. 
+# Large loadings indicate that a variable has a strong effect on that principal component.
+pca19_loadings <- as.data.frame(pca19$rotation)
+
 # the contribution to the total variance for each component
 percentVar <- pca19$sdev^2 / sum(pca19$sdev^2)
 
@@ -1678,110 +1705,438 @@ pca19_df <- pca19$x %>%
   rownames_to_column("sample") %>%
   left_join(design19)
 
-
 pca_brix19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=brix)) + 
-  geom_point() + 
+  geom_point(size=2, alpha = .7) + 
   xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
   ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
   theme_minimal() +
-  scale_color_viridis_c()
+  scale_color_viridis_c() +
+  labs(color = expression(degree*Brix)) 
 
-pca_hr19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=hr)) + 
-  geom_point() + 
-  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-  theme_minimal() 
-
-pca_ava19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=ava)) + 
-  geom_point() + 
-  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh))
-
+# pca_hr19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=hr)) + 
+#   geom_point() + 
+#   xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+#   ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+#   theme_minimal() 
+# 
+# pca_ava19 <- ggplot(pca19_df, aes(x=PC1, y=PC2, color=ava)) + 
+#   geom_point() + 
+#   xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+#   ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+#   theme_minimal() +
+#   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+#                                 "AS" = as, "SMV" = smv, "SRH" = srh)) 
 ```
 
-```{r pca17}
-# check that colnames in counts match rownames in info
-all.equal(colnames(counts17), dc17$sample)
+```{r pca_diffex_vs_dm}
+# used from above:
+# d0_19 <- DGEList(counts19)              # initialize the DGE object
+# d19 <-calcNormFactors(d0_19)            # calculate normalization factors
+# all.equal(colnames(counts19), pca19_df$sample)
+pca_mm19 <- model.matrix(~pca19_df$PC1 + pca19_df$PC2 + pca19_df$PC3 + pca19_df$PC4 +
+                          pca19_df$PC5 + pca19_df$PC6 + pca19_df$PC7 + pca19_df$PC8)
+pca_y19 <- voom(d19, pca_mm19, plot = F)
+pca_fit19 <- lmFit(pca_y19, pca_mm19)
 
-design17 <- dc17 %>%
-  dplyr::select(sample, ava_id, hr, brix, ava) %>%
-  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
-  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
-  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
-  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
-  mutate(hr = ifelse(hr > 110, 112, hr))
+pca1_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 2, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) %>%
+  mutate(logFC = logFC*-1)
 
-design17$hr <- factor(design17$hr, levels = c(16, 40, 64, 88, 112))
+pca2_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 3, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
 
-dds17 <- DESeqDataSetFromMatrix(countData = counts17, 
-                                colData = design17, 
-                                design = ~ ava_id + hr)
-vsd17 <-  vst(dds17)
-# perform a PCA on the data in assay(x) for the selected genes
-pca17 <- prcomp(t(assay(vsd17)))
+pca3_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 4, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF) 
 
-# the contribution to the total variance for each component
-percentVar <- pca17$sdev^2 / sum(pca17$sdev^2)
+pca4_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 5, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
 
-pca17_df <- pca17$x %>%
-  as.data.frame() %>%
-  rownames_to_column("sample") %>%
-  left_join(design17)
+pca5_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 6, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+pca6_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 7, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+pca7_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 8, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+pca8_19_all <- dc_contrast(dc_fit = pca_fit19, coeff = 9, 
+                           adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+
+DC2_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 3, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC3_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 4, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC4_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 5, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC5_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 6, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC6_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 7, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC7_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 8, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
+DC8_19_all <- dc_contrast(dc_fit = dc_fit19, coeff = 9, 
+                          adj.p.filt = 1, filter_logFC = F) %>%
+  arrange(ORF)
 
 
-pca_brix17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=brix)) + 
-  geom_point() + 
-  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-  theme_minimal() +
-  scale_color_viridis_c()
+# all.equal(brix_19_all$ORF, dc1_19_all$ORF, pca_19_all$ORF)
 
-pca_hr17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=hr)) + 
-  geom_point() + 
-  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-  theme_minimal() 
+all_l2fc <- data.frame(brix = brix_19_all$logFC_adj * -1,
+                       DC1 = dc1_19_all$logFC_adj,
+                       DC2 = DC2_19_all$logFC_adj,
+                       DC3 = DC3_19_all$logFC_adj,
+                       DC4 = DC4_19_all$logFC_adj,
+                       DC5 = DC5_19_all$logFC_adj,
+                       DC6 = DC6_19_all$logFC_adj,
+                       DC7 = DC7_19_all$logFC_adj,
+                       DC8 = DC8_19_all$logFC_adj,
+                       pca1 = pca1_19_all$logFC_adj,
+                       pca2 = pca2_19_all$logFC_adj, 
+                       pca3 = pca3_19_all$logFC_adj, 
+                       pca4 = pca4_19_all$logFC_adj,
+                       pca5 = pca5_19_all$logFC_adj,
+                       pca6 = pca6_19_all$logFC_adj, 
+                       pca7 = pca7_19_all$logFC_adj, 
+                       pca8 = pca8_19_all$logFC_adj) 
 
-pca_ava17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=ava)) + 
-  geom_point() + 
-  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
-  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh))
-
+corr_l2fc <- cor(all_l2fc)
+corr_plt <- ggcorrplot(corr_l2fc, type = "upper", show.diag = T, lab = T, 
+                       hc.order = T, digits = 3, lab_size = 3, tl.cex = 9, 
+                       lab_col = "white", show.legend = T,  legend.title =  "",
+                       colors = brewer.pal(n = 3, name = "RdYlBu")) + 
+  theme(legend.position = "bottom")
 ```
 
-```{r tsne17}
-library(Rtsne)
-tsne17 <- Rtsne(t(assay(vsd17)), 
-                check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
-dtsne17 <- as.data.frame(tsne17$Y)
-dtsne17$sample <- colnames(assay(vsd17))
-dtsne17 <- left_join(dtsne17, design17)
-tsne_hr17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = hr)) +
-  geom_point()+
-  theme_minimal()
-
-tsne_brix17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = brix)) +
-  geom_point()+
+```{r all_pca19_hour}
+pca1_19p <- ggplot(pca19_df, aes(x = PC1, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC1) + 2 * sd(pca19_df$PC1), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC1) - 2 * sd(pca19_df$PC1), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC1) + sd(pca19_df$PC1), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC1) - sd(pca19_df$PC1), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
   theme_minimal() +
-  scale_color_viridis_c()
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 
-
-tsne_ava17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = ava)) +
-  geom_point()+
+pca2_19p <- ggplot(pca19_df, aes(x = PC2, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC2) + 2 * sd(pca19_df$PC2), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC2) - 2 * sd(pca19_df$PC2), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC2) + sd(pca19_df$PC2), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC2) - sd(pca19_df$PC2), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC2: ", round(percentVar[2] * 100),"% variance")) +
   theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh))
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+pca3_19p <- ggplot(pca19_df, aes(x = PC3, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(pca19_df$PC3) + 2 * sd(pca19_df$PC3), linetype = "dotted") +
+      geom_vline(xintercept = -mean(pca19_df$PC3) - 2 * sd(pca19_df$PC3), linetype = "dotted") +  
+      geom_vline(xintercept = mean(pca19_df$PC3) + sd(pca19_df$PC3), linetype = "dashed") +
+      geom_vline(xintercept = -mean(pca19_df$PC3) - sd(pca19_df$PC3), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+pca4_19p <- ggplot(pca19_df, aes(x = PC4, y = hr, color=brix)) +
+      geom_vline(xintercept = mean(pca19_df$PC4) + 2 * sd(pca19_df$PC4), linetype = "dotted") +
+      geom_vline(xintercept = -mean(pca19_df$PC4) - 2 * sd(pca19_df$PC4), linetype = "dotted") +  
+      geom_vline(xintercept = mean(pca19_df$PC4) + sd(pca19_df$PC4), linetype = "dashed") +
+      geom_vline(xintercept = -mean(pca19_df$PC4) - sd(pca19_df$PC4), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC4: ",round(percentVar[4] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+pca5_19p <- ggplot(pca19_df, aes(x = PC5, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC5) + 2 * sd(pca19_df$PC5), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC5) - 2 * sd(pca19_df$PC5), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC5) + sd(pca19_df$PC5), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC5) - sd(pca19_df$PC5), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC5: ",round(percentVar[5] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+pca6_19p <- ggplot(pca19_df, aes(x = PC6, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC6) + 2 * sd(pca19_df$PC6), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC6) - 2 * sd(pca19_df$PC6), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC6) + sd(pca19_df$PC6), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC6) - sd(pca19_df$PC6), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC6: ",round(percentVar[6] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)")
+
+pca7_19p <- ggplot(pca19_df, aes(x = PC7, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC7) + 2 * sd(pca19_df$PC7), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC7) - 2 * sd(pca19_df$PC7), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC7) + sd(pca19_df$PC7), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC7) - sd(pca19_df$PC7), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC7: ",round(percentVar[7] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
+
+pca8_19p <- ggplot(pca19_df, aes(x = PC8, y = hr, color=brix)) +
+  geom_vline(xintercept = mean(pca19_df$PC8) + 2 * sd(pca19_df$PC8), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC8) - 2 * sd(pca19_df$PC8), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC8) + sd(pca19_df$PC8), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC8) - sd(pca19_df$PC8), linetype = "dashed") +  
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_viridis_c() +
+  xlab(paste0("PC8: ",round(percentVar[8] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "time (hours)") 
 ```
+
+```{r all_pca19_df_ava}
+pca1_19p_ava <- ggplot(pca19_df, aes(x = PC1, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC1) + 2 * sd(pca19_df$PC1), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC1) - 2 * sd(pca19_df$PC1), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC1) + sd(pca19_df$PC1), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC1) - sd(pca19_df$PC1), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  theme_minimal() +
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca2_19p_ava <- ggplot(pca19_df, aes(x = PC2, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC2) + 2 * sd(pca19_df$PC2), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC2) - 2 * sd(pca19_df$PC2), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC2) + sd(pca19_df$PC2), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC2) - sd(pca19_df$PC2), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca3_19p_ava <- ggplot(pca19_df, aes(x = PC3, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC3) + 2 * sd(pca19_df$PC3), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC3) - 2 * sd(pca19_df$PC3), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC3) + sd(pca19_df$PC3), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC3) - sd(pca19_df$PC3), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC3: ",round(percentVar[3] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca4_19p_ava <- ggplot(pca19_df, aes(x = PC4, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC4) + 2 * sd(pca19_df$PC4), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC4) - 2 * sd(pca19_df$PC4), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC4) + sd(pca19_df$PC4), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC4) - sd(pca19_df$PC4), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC4: ",round(percentVar[4] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca5_19p_ava <- ggplot(pca19_df, aes(x = PC5, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC5) + 2 * sd(pca19_df$PC5), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC5) - 2 * sd(pca19_df$PC5), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC5) + sd(pca19_df$PC5), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC5) - sd(pca19_df$PC5), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour") +
+  xlab(paste0("PC5: ",round(percentVar[5] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca6_19p_ava <- ggplot(pca19_df, aes(x = PC6, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC6) + 2 * sd(pca19_df$PC6), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC6) - 2 * sd(pca19_df$PC6), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC6) + sd(pca19_df$PC6), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC6) - sd(pca19_df$PC6), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC6: ",round(percentVar[6] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca7_19p_ava <- ggplot(pca19_df, aes(x = PC7, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC7) + 2 * sd(pca19_df$PC7), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC7) - 2 * sd(pca19_df$PC7), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC7) + sd(pca19_df$PC7), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC7) - sd(pca19_df$PC7), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC7: ",round(percentVar[7] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+
+pca8_19p_ava <- ggplot(pca19_df, aes(x = PC8, y = ava_id, color=hr)) +
+  geom_vline(xintercept = mean(pca19_df$PC8) + 2 * sd(pca19_df$PC8), linetype = "dotted") +
+  geom_vline(xintercept = -mean(pca19_df$PC8) - 2 * sd(pca19_df$PC8), linetype = "dotted") +  
+  geom_vline(xintercept = mean(pca19_df$PC8) + sd(pca19_df$PC8), linetype = "dashed") +
+  geom_vline(xintercept = -mean(pca19_df$PC8) - sd(pca19_df$PC8), linetype = "dashed") + 
+  geom_beeswarm(size=2, spacing =1, alpha = .7, corral="wrap", corral.width = 1) +
+  scale_color_brewer(palette = "Paired", name = "hour")  +
+  xlab(paste0("PC8: ",round(percentVar[8] * 100),"% variance")) +
+  theme_minimal() +
+  scale_y_discrete(limits=rev) +
+  labs(color = expression(degree*Brix), y = "site") 
+```
+
+```{r pca1_thru_pca4_2019, fig.height= 3.7}
+
+# combine relevant hr plts
+pca1_pca4_19_hr <- ggarrange(pca1_19p, pca2_19p, pca3_19p, pca4_19p, ncol = 1, legend = "none",
+                             common.legend = T, labels = c("A", "", ""))
+
+# combine relevant ava plts
+pca1_pca4_19_ava <- ggarrange(pca1_19p_ava, pca2_19p_ava, pca3_19p_ava, pca4_19p_ava, 
+                              ncol = 1, legend = "none",
+                              common.legend = T, labels = c("B", "", ""))
+pdf("pca1-thru-pca4.pdf", width = 6.5, height = 8.5)
+ggarrange(pca1_pca4_19_hr, pca1_pca4_19_ava, legend = "none")
+dev.off()
+```
+
+```{r pca5_thru_pca8_2019, fig.height= 4}
+
+# combine relevant ava plts
+pca5_pca8_19_ava <- ggarrange(pca5_19p_ava, pca6_19p_ava, pca7_19p_ava, pca8_19p_ava, 
+                              ncol = 1, legend = "none", common.legend = T, 
+                              labels = c("B", "", "", ""))
+
+# combine relevant hr plts
+pca5_pca8_19_hr <- ggarrange(pca5_19p, pca6_19p, pca7_19p, pca8_19p, ncol = 1, 
+                             legend = "none", common.legend = T, 
+                             labels = c("A", "", "", ""))
+pdf("pca4-thru-pca8.pdf", width = 6.5, height = 8.5)
+ggarrange(pca5_pca8_19_hr, pca5_pca8_19_ava, legend = "none")
+dev.off()
+```
+
 
 ```{r tsne19}
+library(Rtsne)
+tsne19 <- Rtsne(t(assay(vsd19)), check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
+dtsne19 <- as.data.frame(tsne19$Y)
+dtsne19$sample <- colnames(assay(vsd19))
+dtsne19 <- left_join(dtsne19, design19)
+tsne19_perplexity5 <- ggplot(dtsne19, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal() +
+  ggtitle("perplexity 5") +
+  scale_color_brewer(palette = "Paired", name = "hour")
+
+tsne19 <- Rtsne(t(assay(vsd19)), check_duplicates=FALSE, pca=TRUE, perplexity=6, theta=0.5, dims=2)
+dtsne19 <- as.data.frame(tsne19$Y)
+dtsne19$sample <- colnames(assay(vsd19))
+dtsne19 <- left_join(dtsne19, design19)
+tsne19_perplexity6 <- ggplot(dtsne19, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal() +
+  ggtitle("perplexity 6") +
+  scale_color_brewer(palette = "Paired", name = "hour")
+  
+tsne19 <- Rtsne(t(assay(vsd19)), check_duplicates=FALSE, pca=TRUE, perplexity=20, theta=0.5, dims=2)
+dtsne19 <- as.data.frame(tsne19$Y)
+dtsne19$sample <- colnames(assay(vsd19))
+dtsne19 <- left_join(dtsne19, design19)
+tsne19_perplexity20 <- ggplot(dtsne19, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal() +
+  ggtitle("perplexity 20") +
+  scale_color_brewer(palette = "Paired", name = "hour") 
+```
+
+```{r pca_hyp}
+# check that colnames in counts match rownames in info
+colnames(counts) <- gsub("GSM......._", "", colnames(counts))
+all.equal(colnames(counts), dc_hyp$sample)
+
+designhyp <- dc_hyp %>%
+  dplyr::select(sample, time, deletion)
+
+dds_hyp <- DESeqDataSetFromMatrix(countData = counts, 
+                                colData = designhyp, 
+                                design = ~ deletion + time)
+vsd_hyp <-  vst(dds_hyp)
+# perform a PCA on the data in assay(x) for the selected genes
+pca_hyp <- prcomp(t(assay(vsd_hyp)))
+
+# the contribution to the total variance for each component
+percentVar_hyp <- pca_hyp$sdev^2 / sum(pca_hyp$sdev^2)
+
+pca_hyp_df <- pca_hyp$x %>%
+  as.data.frame() %>%
+  rownames_to_column("sample") %>%
+  left_join(designhyp)
+
+# filter to wildtype like plot in main text
+pca_hyp_df <- pca_hyp_df %>% filter(deletion == "HAP1")
+pca_hyp <- ggplot(pca_hyp_df, aes(x=PC1, y=time, color=time)) + 
+  geom_point(size = 2) + 
+  xlab(paste0("PC1: ",round(percentVar_hyp[1] * 100),"% variance")) +
+  theme_minimal() +
+  ylab("time (minutes)") +
+  scale_y_discrete(limits=rev) +
+  scale_color_manual(values = c("#CE2220", "#E67F33", "#D0B541", "#7EB875", "#57A2AC", "#4E78C4", "#824D99", "#B997C7"))
+```
+
+```{r pca_tsne_fig}
+pca1_19p2 <- pca1_19p + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  theme(legend.position = "none")
+
+
+pdf(file = "tsne_pca_revision.pdf", height = 6, width = 6)
+ggarrange(ggarrange(
+  tsne19_perplexity5, tsne19_perplexity6, tsne19_perplexity20, common.legend = T, legend = "bottom", nrow = 3),
+  ggarrange(pca_hyp, ggarrange(pca1_19p2, legend = "none"), pca_brix19, legend = "bottom", heights = c(0.5, 0.3, 0.6), nrow = 3),
+  widths = c(0.4, 0.6))
+dev.off()
+
+```
+
+
+```{r tsne_hyp}
+library(Rtsne)
 tsne19 <- Rtsne(t(assay(vsd19)), 
-                check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
+                check_duplicates=FALSE, pca=TRUE, perplexity=6, theta=0.5, dims=2)
 dtsne19 <- as.data.frame(tsne19$Y)
 dtsne19$sample <- colnames(assay(vsd19))
 dtsne19 <- left_join(dtsne19, design19)
@@ -1802,64 +2157,35 @@ tsne_ava19 <- ggplot(dtsne19, aes(x = V1, y = V2, color = ava)) +
 ```
 
 ```{r DC1_DC219}
-dc19$hr <- factor(dc19$hr, levels = c(2, 6, 16, 64, 112))
-dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
-  geom_point()+
-  theme_minimal() 
-
-dm_ava19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = ava)) +
-  geom_point()+
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh))
-dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
-  geom_point()+
-  theme_minimal() 
-
-dm_brix19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = brix)) +
-  geom_point()+
-  theme_minimal() +
-  scale_color_viridis_c()
+# dc19$hr <- factor(dc19$hr, levels = c(2, 6, 16, 64, 112))
+# dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
+#   geom_point()+
+#   theme_minimal() 
+# 
+# dm_ava19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = ava)) +
+#   geom_point()+
+#   theme_minimal() +
+#   scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+#                                 "AS" = as, "SMV" = smv, "SRH" = srh))
+# dm_hr19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = hr)) +
+#   geom_point()+
+#   theme_minimal() 
+# 
+# dm_brix19 <- ggplot(dc19, aes(x = DC1, y = DC2, color = brix)) +
+#   geom_point()+
+#   theme_minimal() +
+#   scale_color_viridis_c()
 ```
 
-```{r DC1_DC217}
-dc17_2 <- dc17 %>%
-  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
-  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
-  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
-  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
-  mutate(hr = ifelse(hr > 110, 112, hr))
-dc17_2$hr <- factor(dc17_2$hr, levels = c(16, 40, 64, 88, 112))
-dm_hr17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = hr)) +
-  geom_point()+
-  theme_minimal() 
-
-dm_ava17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = ava)) +
-  geom_point()+
-  theme_minimal() +
-  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
-                                "AS" = as, "SMV" = smv, "SRH" = srh))
-
-dm_brix17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = brix)) +
-  geom_point()+
-  theme_minimal() +
-  scale_color_viridis_c()
-```
 
 ```{r combine_plts}
-plts_hr19 <- ggarrange(dm_hr19, pca_hr19, tsne_hr19, nrow = 3, common.legend = T, legend = "bottom")
-plts_brix19 <- ggarrange(dm_brix19, pca_brix19, tsne_brix19, nrow = 3, common.legend = T, legend = "bottom")
-plts_ava19 <- ggarrange(dm_ava19, pca_ava19, tsne_ava19, nrow = 3, common.legend = T, legend = "bottom")
-
-ggarrange(plts_hr19, plts_brix19, plts_ava19, ncol = 3)
-
-
-plts_hr17 <- ggarrange(dm_hr17, pca_hr17, tsne_hr17, nrow = 3, common.legend = T, legend = "bottom")
-plts_brix17 <- ggarrange(dm_brix17, pca_brix17, tsne_brix17, nrow = 3, common.legend = T, legend = "bottom")
-plts_ava17 <- ggarrange(dm_ava17, pca_ava17, tsne_ava17, nrow = 3, common.legend = T, legend = "bottom")
-
-ggarrange(plts_hr17, plts_brix17, plts_ava17, ncol = 3)
+# plts_hr19 <- ggarrange(dm_hr19, pca_hr19, tsne_hr19, nrow = 3, common.legend = T, legend = "bottom")
+# plts_brix19 <- ggarrange(dm_brix19, pca_brix19, tsne_brix19, nrow = 3, common.legend = T, legend = "bottom")
+# plts_ava19 <- ggarrange(dm_ava19, pca_ava19, tsne_ava19, nrow = 3, common.legend = T, legend = "bottom")
+# 
+# ggarrange(plts_hr19, plts_brix19, plts_ava19, ncol = 3)
 ```
+
 
 \newpage
 # Supplementary material {-}
@@ -2206,4 +2532,113 @@ upset_brix <- UpSetR::upset(fromList(brix_list), nsets = 8, nintersects = 200,
 plot_grid(as.grob(upset_brix_17), as.grob(upset_brix_19), 
           as.grob(upset_dc1), as.grob(upset_brix),
           ncol = 2, labels = c("A", "B", "C", "D"))
+```
+
+```{r pca17}
+# check that colnames in counts match rownames in info
+all.equal(colnames(counts17), dc17$sample)
+
+design17 <- dc17 %>%
+  dplyr::select(sample, ava_id, hr, brix, ava) %>%
+  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
+  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
+  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
+  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
+  mutate(hr = ifelse(hr > 110, 112, hr))
+
+design17$hr <- factor(design17$hr, levels = c(16, 40, 64, 88, 112))
+
+dds17 <- DESeqDataSetFromMatrix(countData = counts17, 
+                                colData = design17, 
+                                design = ~ ava_id + hr)
+vsd17 <-  vst(dds17)
+# perform a PCA on the data in assay(x) for the selected genes
+pca17 <- prcomp(t(assay(vsd17)))
+
+# the contribution to the total variance for each component
+percentVar <- pca17$sdev^2 / sum(pca17$sdev^2)
+
+pca17_df <- pca17$x %>%
+  as.data.frame() %>%
+  rownames_to_column("sample") %>%
+  left_join(design17)
+
+
+pca_brix17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=brix)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_viridis_c()
+
+pca_hr17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=hr)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() 
+
+pca_ava17 <- ggplot(pca17_df, aes(x=PC1, y=PC2, color=ava)) + 
+  geom_point() + 
+  xlab(paste0("PC1: ",round(percentVar[1] * 100),"% variance")) +
+  ylab(paste0("PC2: ",round(percentVar[2] * 100),"% variance")) +
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+
+```
+
+```{r tsne17}
+library(Rtsne)
+tsne17 <- Rtsne(t(assay(vsd17)), 
+                check_duplicates=FALSE, pca=TRUE, perplexity=5, theta=0.5, dims=2)
+dtsne17 <- as.data.frame(tsne17$Y)
+dtsne17$sample <- colnames(assay(vsd17))
+dtsne17 <- left_join(dtsne17, design17)
+tsne_hr17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = hr)) +
+  geom_point()+
+  theme_minimal()
+
+tsne_brix17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+
+
+tsne_ava17 <- ggplot(dtsne17, aes(x = V1, y = V2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+```
+
+```{r DC1_DC217}
+dc17_2 <- dc17 %>%
+  mutate(hr = ifelse(hr < 20, 16, hr)) %>%
+  mutate(hr = ifelse(hr > 20 & hr < 46, 40, hr)) %>%
+  mutate(hr = ifelse(hr > 47 & hr < 76, 64, hr)) %>%
+  mutate(hr = ifelse(hr > 76 & hr < 109, 88, hr)) %>%
+  mutate(hr = ifelse(hr > 110, 112, hr))
+dc17_2$hr <- factor(dc17_2$hr, levels = c(16, 40, 64, 88, 112))
+dm_hr17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = hr)) +
+  geom_point()+
+  theme_minimal() 
+
+dm_ava17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = ava)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_manual(values = c("OR"=or,  "AV" = av, "SNC" = snc, "RRV" = rrv, "CRN" = crn,
+                                "AS" = as, "SMV" = smv, "SRH" = srh))
+
+dm_brix17 <- ggplot(dc17_2, aes(x = DC1, y = DC2, color = brix)) +
+  geom_point()+
+  theme_minimal() +
+  scale_color_viridis_c()
+```
+
+```{r combine_plts17}
+plts_hr17 <- ggarrange(dm_hr17, pca_hr17, tsne_hr17, nrow = 3, common.legend = T, legend = "bottom")
+plts_brix17 <- ggarrange(dm_brix17, pca_brix17, tsne_brix17, nrow = 3, common.legend = T, legend = "bottom")
+plts_ava17 <- ggarrange(dm_ava17, pca_ava17, tsne_ava17, nrow = 3, common.legend = T, legend = "bottom")
+
+ggarrange(plts_hr17, plts_brix17, plts_ava17, ncol = 3)
 ```
